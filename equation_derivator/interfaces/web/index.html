@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Equation-Derivator | Universal Physical & Mathematical AI Engine</title>
+  <title>Equation-Derivator | Theoretical Physics & Symbolic AI Workbench</title>
   
-  <!-- Fonts -->
+  <!-- Modern Typography: Space Grotesk, Outfit & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   
-  <!-- KaTeX for High-Fidelity Math Rendering -->
+  <!-- KaTeX for crisp mathematical typesetting -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
@@ -20,285 +20,546 @@
 
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
-  <div class="background-glow glow-1"></div>
-  <div class="background-glow glow-2"></div>
+<body class="workbench-layout">
+  
+  <!-- Background Nebula Grid Canvas & Ambient Glows -->
+  <canvas id="nebula-canvas" class="nebula-canvas"></canvas>
+  <div class="ambient-glow glow-cyan"></div>
+  <div class="ambient-glow glow-purple"></div>
 
-  <header class="app-header">
-    <div class="logo-container">
-      <div class="logo-icon">⚛</div>
-      <div class="logo-text">
-        <h1>Equation<span class="gradient-text">Derivator</span></h1>
-        <p class="tagline">Universal AI Derivation, Discovery & Verification Engine</p>
+  <!-- TOP HUD BAR -->
+  <header class="workbench-header">
+    <div class="header-left">
+      <div class="brand-badge">
+        <div class="brand-pulse"></div>
+        <span class="brand-logo">⚛</span>
+      </div>
+      <div class="brand-titles">
+        <div class="brand-name">EQUATION<span class="brand-highlight">DERIVATOR</span> <span class="version-tag">AI CORE v0.1</span></div>
+        <div class="brand-sub">Universal Symbolic Mathematics & Theoretical Physics Lab</div>
       </div>
     </div>
-    <nav class="nav-tabs" id="main-nav">
-      <button class="nav-tab active" data-tab="derive"><i data-lucide="git-branch"></i> Multi-Step Derivation</button>
-      <button class="nav-tab" data-tab="verify"><i data-lucide="shield-check"></i> Equation Verifier</button>
-      <button class="nav-tab" data-tab="discover"><i data-lucide="sparkles"></i> Discovery Lab</button>
-      <button class="nav-tab" data-tab="catalog"><i data-lucide="book-open"></i> Knowledge Base</button>
-      <button class="nav-tab" data-tab="quantities"><i data-lucide="layers"></i> Physical Ontology</button>
-    </nav>
+
+    <!-- Omnibar Quick Launcher -->
+    <div class="header-center">
+      <div class="omnibar-container" id="omnibar-container">
+        <i data-lucide="search" class="omnibar-icon"></i>
+        <input type="text" id="omnibar-input" placeholder="Type to search, derive (e.g. 'K from p,m'), verify, or synthesize..." autocomplete="off">
+        <div class="omnibar-shortcut"><kbd>Ctrl</kbd><kbd>K</kbd></div>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="system-stats">
+        <div class="stat-pill"><span class="stat-num" id="stat-eq-count">32</span> Equations</div>
+        <div class="stat-pill"><span class="stat-num">7</span> SI Dimensions</div>
+        <div class="stat-pill status-live"><span class="live-dot"></span> Engine Online</div>
+      </div>
+      <button class="btn-icon" id="btn-toggle-sidecar" title="Toggle Physical Inspector"><i data-lucide="sidebar-close"></i></button>
+    </div>
   </header>
 
-  <main class="main-content">
-    <!-- TAB 1: DERIVATION ENGINE -->
-    <section id="tab-derive" class="tab-panel active">
-      <div class="panel-header">
-        <h2>Rigorous Multi-Step Symbolic Derivation</h2>
-        <p>Derive any physical or mathematical quantity in terms of chosen parameters with step-by-step reasoning.</p>
+  <!-- MAIN APP CONTAINER -->
+  <div class="workbench-body">
+    
+    <!-- LEFT NAVIGATION DOCK (VERTICAL CYBER-RAIL) -->
+    <aside class="workbench-dock">
+      <nav class="dock-nav">
+        <button class="dock-item active" data-view="derivator" title="Symbolic Derivation Pipeline">
+          <div class="dock-icon-wrapper"><i data-lucide="git-merge"></i></div>
+          <span class="dock-label">Derivator</span>
+          <div class="dock-active-indicator"></div>
+        </button>
+
+        <button class="dock-item" data-view="discovery" title="Buckingham Pi Discovery Reactor">
+          <div class="dock-icon-wrapper"><i data-lucide="atom"></i></div>
+          <span class="dock-label">Discovery</span>
+          <div class="dock-active-indicator"></div>
+        </button>
+
+        <button class="dock-item" data-view="verifier" title="Multi-Layer Equation Verifier">
+          <div class="dock-icon-wrapper"><i data-lucide="shield-check"></i></div>
+          <span class="dock-label">Verifier</span>
+          <div class="dock-active-indicator"></div>
+        </button>
+
+        <button class="dock-item" data-view="graph" title="Interactive Physics Knowledge Graph">
+          <div class="dock-icon-wrapper"><i data-lucide="share-2"></i></div>
+          <span class="dock-label">Graph</span>
+          <div class="dock-active-indicator"></div>
+        </button>
+
+        <button class="dock-item" data-view="catalog" title="Universal Equation Knowledge Base">
+          <div class="dock-icon-wrapper"><i data-lucide="book-open"></i></div>
+          <span class="dock-label">Catalog</span>
+          <div class="dock-active-indicator"></div>
+        </button>
+
+        <button class="dock-item" data-view="ontology" title="SI Physical Quantities & Variable Aliases">
+          <div class="dock-icon-wrapper"><i data-lucide="binary"></i></div>
+          <span class="dock-label">Ontology</span>
+          <div class="dock-active-indicator"></div>
+        </button>
+      </nav>
+
+      <div class="dock-footer">
+        <button class="dock-item" id="btn-quick-scratchpad" title="Scientific Scratchpad">
+          <div class="dock-icon-wrapper"><i data-lucide="terminal"></i></div>
+          <span class="dock-label">Console</span>
+        </button>
       </div>
+    </aside>
 
-      <div class="two-column-layout">
-        <!-- Input Form -->
-        <div class="card glass-card form-card">
-          <div class="card-title"><i data-lucide="sliders"></i> Derivation Parameters</div>
+    <!-- CENTER WORKSPACE VIEWPORTS -->
+    <main class="workbench-main">
+      
+      <!-- ================= VIEW 1: SYMBOLIC DERIVATOR PIPELINE ================= -->
+      <section id="view-derivator" class="view-panel active">
+        <div class="view-split">
           
-          <div class="preset-section">
-            <label>Quick Presets:</label>
-            <div class="preset-chips">
-              <button class="chip" onclick="loadPreset('ke_momentum')">Kinetic Energy from Momentum ($K(p, m)$)</button>
-              <button class="chip" onclick="loadPreset('escape_velocity')">Escape Velocity ($v(G, M, r)$)</button>
-              <button class="chip" onclick="loadPreset('power_ir')">Joule Heating Power ($P(I, R)$)</button>
-              <button class="chip" onclick="loadPreset('work_energy_calculus')">Work-Energy Calculus Theorem ($W = \Delta K$)</button>
+          <!-- Control Command Pod -->
+          <div class="pod control-pod">
+            <div class="pod-header">
+              <div class="pod-title"><i data-lucide="sliders-horizontal"></i> Derivation Dispatcher</div>
+              <span class="pod-badge">A* Symbolic Engine</span>
             </div>
-          </div>
 
-          <div class="form-group">
-            <label for="target-var">Target Quantity / Variable to Derive:</label>
-            <input type="text" id="target-var" placeholder="e.g. K, v, P, E, T" value="K">
-          </div>
-
-          <div class="form-group">
-            <label for="in-terms-of">Express in Terms Of (comma-separated):</label>
-            <input type="text" id="in-terms-of" placeholder="e.g. p, m" value="p, m">
-          </div>
-
-          <div class="form-group">
-            <label for="starting-eqs">Starting Equations (optional; auto-discovered if blank):</label>
-            <input type="text" id="starting-eqs" placeholder="e.g. kinetic_energy_def; linear_momentum_def">
-            <small>Leave empty to auto-traverse the Universal Knowledge Graph.</small>
-          </div>
-
-          <button id="btn-run-derive" class="btn-primary"><i data-lucide="play"></i> Execute Multi-Step Derivation</button>
-        </div>
-
-        <!-- Result Output -->
-        <div class="card glass-card output-card">
-          <div class="card-title">
-            <span><i data-lucide="file-text"></i> Derivation Result</span>
-            <div id="derive-actions" class="card-actions hidden">
-              <button class="btn-sm" onclick="copyDeriveMarkdown()"><i data-lucide="copy"></i> Copy Markdown</button>
-            </div>
-          </div>
-
-          <div id="derive-loading" class="loading-state hidden">
-            <div class="spinner"></div>
-            <p>Solving symbolic derivation pathway & verifying dimensional consistency...</p>
-          </div>
-
-          <div id="derive-placeholder" class="empty-state">
-            <i data-lucide="compass" class="big-icon"></i>
-            <p>Select a preset or enter parameters and click <strong>Execute Multi-Step Derivation</strong> to generate complete step-by-step mathematical reasoning.</p>
-          </div>
-
-          <div id="derive-result-container" class="result-container hidden">
-            <div class="final-banner">
-              <div class="banner-badge verified"><i data-lucide="check-circle-2"></i> Verified Sound</div>
-              <div class="final-formula-box">
-                <span class="label">Derived Law:</span>
-                <div id="final-math-display" class="katex-display-box"></div>
+            <!-- Quick Template Cards -->
+            <div class="template-deck">
+              <div class="deck-label">Preset Research Workflows:</div>
+              <div class="deck-cards">
+                <div class="deck-card" onclick="loadDerivePreset('ke_momentum')">
+                  <div class="deck-card-title">Kinetic Energy $K(p, m)$</div>
+                  <div class="deck-card-formula">$K = \frac{1}{2}mv^2 \land p = mv \implies \frac{p^2}{2m}$</div>
+                </div>
+                <div class="deck-card" onclick="loadDerivePreset('escape_velocity')">
+                  <div class="deck-card-title">Escape Velocity $v_{esc}$</div>
+                  <div class="deck-card-formula">$\frac{1}{2}mv^2 = \frac{GMm}{r} \implies \sqrt{\frac{2GM}{r}}$</div>
+                </div>
+                <div class="deck-card" onclick="loadDerivePreset('power_ir')">
+                  <div class="deck-card-title">Joule Dissipation $P(I, R)$</div>
+                  <div class="deck-card-formula">$P = IV \land V = IR \implies I^2 R$</div>
+                </div>
+                <div class="deck-card" onclick="loadDerivePreset('work_energy_calculus')">
+                  <div class="deck-card-title">Work-Energy Theorem</div>
+                  <div class="deck-card-formula">$W = \int F dx \implies \frac{1}{2}m v_f^2 - \frac{1}{2}m v_i^2$</div>
+                </div>
               </div>
             </div>
 
-            <div id="assumptions-box" class="assumptions-box hidden">
-              <h4>Physical Assumptions & Conditions of Validity:</h4>
-              <ul id="assumptions-list"></ul>
+            <div class="command-fields">
+              <div class="field-row">
+                <div class="field-block">
+                  <label for="derive-target"><i data-lucide="target"></i> Target Variable</label>
+                  <input type="text" id="derive-target" value="K" placeholder="e.g. K, v, P, E, T">
+                </div>
+                <div class="field-block">
+                  <label for="derive-in-terms-of"><i data-lucide="list-filter"></i> In Terms Of (Allowed)</label>
+                  <input type="text" id="derive-in-terms-of" value="p, m" placeholder="e.g. p, m or G, M, r">
+                </div>
+              </div>
+
+              <div class="field-block">
+                <label for="derive-equations"><i data-lucide="git-commit"></i> Starting Relations (Optional / Auto-discovered if empty)</label>
+                <input type="text" id="derive-equations" placeholder="e.g. kinetic_energy_def; linear_momentum_def">
+              </div>
+
+              <button id="btn-execute-derivation" class="btn-execute">
+                <span class="btn-glow"></span>
+                <i data-lucide="sparkles"></i> Run Symbolic Derivation Proof
+              </button>
+            </div>
+          </div>
+
+          <!-- Derivation Visual DAG / Pipeline Canvas -->
+          <div class="pod pipeline-pod">
+            <div class="pod-header">
+              <div class="pod-title"><i data-lucide="workflow"></i> Symbolic Derivation Canvas</div>
+              <div class="pod-controls" id="derive-canvas-actions">
+                <button class="btn-pod-action hidden" id="btn-copy-latex" onclick="copyLatexProof()"><i data-lucide="file-code"></i> Copy LaTeX</button>
+                <button class="btn-pod-action hidden" id="btn-copy-md" onclick="copyMarkdownProof()"><i data-lucide="copy"></i> Copy Markdown</button>
+                <button class="btn-pod-action hidden" id="btn-copy-python" onclick="copyPythonProof()"><i data-lucide="code"></i> SymPy Code</button>
+              </div>
             </div>
 
-            <h3>Mathematical Steps & Transformations:</h3>
-            <div id="steps-chain" class="steps-chain"></div>
+            <div id="derive-empty" class="canvas-empty-state">
+              <div class="empty-glow-ring">
+                <i data-lucide="network"></i>
+              </div>
+              <h3>Symbolic Derivation Pipeline Ready</h3>
+              <p>Configure parameters on the left or select a preset template to compute rigorous step-by-step derivations with verified intermediate substitutions.</p>
+            </div>
+
+            <div id="derive-loading-state" class="canvas-loading-state hidden">
+              <div class="reactor-spinner">
+                <div class="reactor-core"></div>
+              </div>
+              <div class="loading-label">Executing Graph Pathfinding & Symbolic Algebraic Elimination...</div>
+            </div>
+
+            <div id="derive-content-stage" class="derive-stage hidden">
+              <!-- Result Invariant Banner -->
+              <div class="derived-banner">
+                <div class="derived-banner-header">
+                  <div class="verified-tag"><i data-lucide="check-check"></i> DERIVATION VERIFIED SOUND</div>
+                  <div class="tag-domain" id="derive-domain-tag">Domain: Classical Mechanics</div>
+                </div>
+                <div class="derived-formula-center">
+                  <div id="math-final-hero" class="math-hero"></div>
+                </div>
+              </div>
+
+              <!-- Constraints Accordion -->
+              <div class="assumptions-chip-box" id="derive-assumptions-box">
+                <div class="box-title"><i data-lucide="alert-circle"></i> Physical Constraints & Regime of Validity:</div>
+                <div class="chips-flex" id="derive-assumptions-chips"></div>
+              </div>
+
+              <!-- Step DAG Nodes -->
+              <div class="dag-container">
+                <div class="dag-line"></div>
+                <div class="dag-steps" id="derive-dag-steps">
+                  <!-- Dynamically rendered DAG cards -->
+                </div>
+              </div>
+            </div>
           </div>
+
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- TAB 2: EQUATION VERIFIER -->
-    <section id="tab-verify" class="tab-panel">
-      <div class="panel-header">
-        <h2>Multi-Aspect Equation Verifier</h2>
-        <p>Rigorously audits equations against dimensional homogeneity, algebraic identities, and numerical Monte Carlo tests.</p>
-      </div>
-
-      <div class="two-column-layout">
-        <div class="card glass-card form-card">
-          <div class="card-title"><i data-lucide="shield-alert"></i> Input Equation for Verification</div>
+      <!-- ================= VIEW 2: DISCOVERY REACTOR ================= -->
+      <section id="view-discovery" class="view-panel">
+        <div class="view-split">
           
-          <div class="form-group">
-            <label for="verify-input">Equation Formula (LHS = RHS):</label>
-            <input type="text" id="verify-input" placeholder="e.g. E^2 = (p*c)^2 + (m*c^2)^2" value="E^2 = (p*c)^2 + (m*c^2)^2">
-          </div>
-
-          <div class="preset-section">
-            <label>Verify Examples:</label>
-            <div class="preset-chips">
-              <button class="chip" onclick="setVerifyInput('E^2 = (p*c)^2 + (m*c^2)^2')">Relativistic Energy-Momentum</button>
-              <button class="chip" onclick="setVerifyInput('P = I^2 * R')">Joule Dissipation Law</button>
-              <button class="chip" onclick="setVerifyInput('T = 2 * pi * sqrt(L / g)')">Pendulum Period</button>
-              <button class="chip" onclick="setVerifyInput('F = m * v')">Invalid Formula (F = mv)</button>
+          <!-- Discovery Controls -->
+          <div class="pod control-pod">
+            <div class="pod-header">
+              <div class="pod-title"><i data-lucide="zap"></i> Synthesis Reactor Settings</div>
+              <span class="pod-badge">Buckingham &Pi; Synthesizer</span>
             </div>
+
+            <div class="reactor-mode-selector">
+              <div class="reactor-mode active" data-mode="dimensional" onclick="setDiscoveryMode('dimensional')">
+                <i data-lucide="orbit"></i>
+                <div>
+                  <strong>Buckingham $\Pi$ Dimensional Synthesis</strong>
+                  <small>Generates power-law scaling relations & Planck units from dimensional kernel</small>
+                </div>
+              </div>
+              <div class="reactor-mode" data-mode="cross_domain" onclick="setDiscoveryMode('cross_domain')">
+                <i data-lucide="shuffle"></i>
+                <div>
+                  <strong>Cross-Domain Law Composition</strong>
+                  <small>Synthesizes novel bridge laws connecting disparate physics disciplines</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dimensional Mode Inputs -->
+            <div id="reactor-dim-controls" class="reactor-controls-block">
+              <div class="field-block">
+                <label><i data-lucide="plus-circle"></i> Select Physical Constants & Quantities to Fuse:</label>
+                <div class="constant-chips" id="synthesis-chips-bank">
+                  <button class="const-chip active" data-sym="G" onclick="toggleSynthChip(this)">$G$ (Gravitation)</button>
+                  <button class="const-chip active" data-sym="hbar" onclick="toggleSynthChip(this)">$\hbar$ (Planck)</button>
+                  <button class="const-chip active" data-sym="c" onclick="toggleSynthChip(this)">$c$ (Light Speed)</button>
+                  <button class="const-chip" data-sym="k_B" onclick="toggleSynthChip(this)">$k_B$ (Boltzmann)</button>
+                  <button class="const-chip" data-sym="epsilon_0" onclick="toggleSynthChip(this)">$\varepsilon_0$ (Permittivity)</button>
+                  <button class="const-chip" data-sym="mu_0" onclick="toggleSynthChip(this)">$\mu_0$ (Permeability)</button>
+                  <button class="const-chip" data-sym="Length" onclick="toggleSynthChip(this)">Length ($L$)</button>
+                  <button class="const-chip" data-sym="Acceleration" onclick="toggleSynthChip(this)">Acceleration ($g$)</button>
+                  <button class="const-chip" data-sym="Mass" onclick="toggleSynthChip(this)">Mass ($m$)</button>
+                  <button class="const-chip" data-sym="SpringConstant" onclick="toggleSynthChip(this)">Spring ($k$)</button>
+                </div>
+              </div>
+
+              <div class="field-block">
+                <label for="reactor-custom-quantities"><i data-lucide="edit-3"></i> Constituent Quantities (CSV)</label>
+                <input type="text" id="reactor-custom-quantities" value="G, hbar, c">
+              </div>
+
+              <div class="field-block">
+                <label for="reactor-target-dim"><i data-lucide="target"></i> Target Physical Dimension / Unit</label>
+                <select id="reactor-target-dim">
+                  <option value="Length" selected>Length $[L]$ (e.g. Planck Length)</option>
+                  <option value="Time">Time $[T]$ (e.g. Planck Time / Period)</option>
+                  <option value="Mass">Mass $[M]$ (e.g. Planck Mass)</option>
+                  <option value="Energy">Energy $[M L^2 T^{-2}]$ (e.g. Planck Energy)</option>
+                  <option value="Frequency">Frequency $[T^{-1}]$ (e.g. Oscillator Frequency)</option>
+                  <option value="Dimensionless">Dimensionless Number $[1]$ (e.g. Fine Structure Constant)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Cross Domain Controls -->
+            <div id="reactor-cross-controls" class="reactor-controls-block hidden">
+              <div class="field-row">
+                <div class="field-block">
+                  <label for="cross-dom-1">Discipline 1</label>
+                  <select id="cross-dom-1">
+                    <option value="Quantum" selected>Quantum Mechanics</option>
+                    <option value="Mechanics">Classical Mechanics</option>
+                    <option value="Electromagnetism">Electromagnetism</option>
+                    <option value="Thermodynamics">Thermodynamics</option>
+                  </select>
+                </div>
+                <div class="field-block">
+                  <label for="cross-dom-2">Discipline 2</label>
+                  <select id="cross-dom-2">
+                    <option value="Relativity" selected>Relativity</option>
+                    <option value="Electromagnetism">Electromagnetism</option>
+                    <option value="Thermodynamics">Thermodynamics</option>
+                    <option value="Quantum">Quantum Mechanics</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <button id="btn-execute-discovery" class="btn-execute">
+              <span class="btn-glow"></span>
+              <i data-lucide="cpu"></i> Synthesize Scaling Laws & Bridges
+            </button>
           </div>
 
-          <button id="btn-run-verify" class="btn-primary"><i data-lucide="check-check"></i> Run Comprehensive Verification</button>
-        </div>
+          <!-- Discovery Results Stage -->
+          <div class="pod pipeline-pod">
+            <div class="pod-header">
+              <div class="pod-title"><i data-lucide="lightbulb"></i> Discovered Relations & Scaling Invariants</div>
+              <span class="pod-badge" id="discovery-count-badge">0 Found</span>
+            </div>
 
-        <div class="card glass-card output-card">
-          <div class="card-title"><i data-lucide="clipboard-check"></i> Audit Report</div>
+            <div id="discovery-empty-state" class="canvas-empty-state">
+              <div class="empty-glow-ring"><i data-lucide="compass"></i></div>
+              <h3>Dimensional Synthesis Chamber Inactive</h3>
+              <p>Select physical constants and target dimension on the left, then click <strong>Synthesize Scaling Laws</strong> to compute dimensional null-space eigenvectors.</p>
+            </div>
+
+            <div id="discovery-stage" class="discovery-stage-grid hidden"></div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ================= VIEW 3: EQUATION VERIFIER ================= -->
+      <section id="view-verifier" class="view-panel">
+        <div class="view-split">
           
-          <div id="verify-placeholder" class="empty-state">
-            <i data-lucide="shield-check" class="big-icon"></i>
-            <p>Enter an equation on the left to verify its dimensions, algebraic consistency, and physical bounds.</p>
+          <div class="pod control-pod">
+            <div class="pod-header">
+              <div class="pod-title"><i data-lucide="shield-check"></i> Verification Sandbox</div>
+              <span class="pod-badge">Multi-Layer Audit</span>
+            </div>
+
+            <div class="template-deck">
+              <div class="deck-label">Test Equations & Corner Cases:</div>
+              <div class="deck-chips-grid">
+                <button class="btn-sm-chip" onclick="setVerifyField('E^2 = (p*c)^2 + (m*c^2)^2')">Relativistic Invariant $E^2 = (pc)^2 + (mc^2)^2$</button>
+                <button class="btn-sm-chip" onclick="setVerifyField('P = I^2 * R')">Joule Heating $P = I^2 R$</button>
+                <button class="btn-sm-chip" onclick="setVerifyField('T = 2 * pi * sqrt(L / g)')">Pendulum $T = 2\pi\sqrt{L/g}$</button>
+                <button class="btn-sm-chip warn" onclick="setVerifyField('F = m * v')">⚠ Invalid Force $F = mv$</button>
+                <button class="btn-sm-chip warn" onclick="setVerifyField('K = 1/2 * m * v^3')">⚠ Invalid Kinetic $K = \frac{1}{2}mv^3$</button>
+              </div>
+            </div>
+
+            <div class="field-block">
+              <label for="verify-equation-input"><i data-lucide="edit"></i> Formula to Verify $(LHS = RHS)$</label>
+              <input type="text" id="verify-equation-input" value="E^2 = (p*c)^2 + (m*c^2)^2">
+            </div>
+
+            <button id="btn-execute-verify" class="btn-execute">
+              <span class="btn-glow"></span>
+              <i data-lucide="check-check"></i> Run Comprehensive Verification Audit
+            </button>
           </div>
 
-          <div id="verify-report-container" class="result-container hidden">
-            <div id="verify-overall-badge" class="overall-badge"></div>
-            <div class="audit-grid" id="audit-grid"></div>
-          </div>
-        </div>
-      </div>
-    </section>
+          <!-- Verifier Output HUD -->
+          <div class="pod pipeline-pod">
+            <div class="pod-header">
+              <div class="pod-title"><i data-lucide="file-check"></i> Audit Telemetry</div>
+              <div id="verify-hud-badge" class="hud-status-badge">Awaiting Input</div>
+            </div>
 
-    <!-- TAB 3: DISCOVERY LAB -->
-    <section id="tab-discover" class="tab-panel">
-      <div class="panel-header">
-        <h2>Equation Discovery & Synthesis Lab</h2>
-        <p>Synthesize new physical scaling laws using the Buckingham $\Pi$ theorem and discover cross-domain bridges.</p>
-      </div>
+            <div id="verify-empty-state" class="canvas-empty-state">
+              <div class="empty-glow-ring"><i data-lucide="shield-alert"></i></div>
+              <h3>Verification Suite Idle</h3>
+              <p>Type any proposed physical formula on the left to verify its 7-dimensional SI homogeneity, algebraic identity cancellation, and Monte Carlo physical bounds.</p>
+            </div>
 
-      <div class="two-column-layout">
-        <div class="card glass-card form-card">
-          <div class="card-title"><i data-lucide="cpu"></i> Discovery Synthesis Settings</div>
-          
-          <div class="form-group">
-            <label>Discovery Mode:</label>
-            <div class="radio-group">
-              <label class="radio-label">
-                <input type="radio" name="disc-mode" value="dimensional" checked onchange="toggleDiscoveryMode()">
-                <span>Buckingham $\Pi$ Dimensional Synthesis</span>
-              </label>
-              <label class="radio-label">
-                <input type="radio" name="disc-mode" value="cross_domain" onchange="toggleDiscoveryMode()">
-                <span>Cross-Domain Bridge Composition</span>
-              </label>
+            <div id="verify-hud-stage" class="verify-hud-grid hidden">
+              
+              <!-- Overall Banner -->
+              <div class="audit-hero-card" id="audit-hero-card">
+                <div class="audit-hero-title" id="audit-hero-status">PHYSICAL EQUATION VERIFIED SOUND</div>
+                <div class="audit-hero-math" id="audit-hero-math"></div>
+              </div>
+
+              <!-- 3 Pillar Metric Cards -->
+              <div class="audit-tri-grid">
+                <div class="audit-pillar" id="pillar-dim">
+                  <div class="pillar-header">
+                    <i data-lucide="scale"></i>
+                    <span>1. Dimensional Homogeneity</span>
+                  </div>
+                  <div class="pillar-status" id="pillar-dim-status">PASS</div>
+                  <div class="pillar-detail" id="pillar-dim-detail"></div>
+                </div>
+
+                <div class="audit-pillar" id="pillar-sym">
+                  <div class="pillar-header">
+                    <i data-lucide="code"></i>
+                    <span>2. Symbolic Identity</span>
+                  </div>
+                  <div class="pillar-status" id="pillar-sym-status">PASS</div>
+                  <div class="pillar-detail" id="pillar-sym-detail"></div>
+                </div>
+
+                <div class="audit-pillar" id="pillar-num">
+                  <div class="pillar-header">
+                    <i data-lucide="activity"></i>
+                    <span>3. Monte Carlo Bounds</span>
+                  </div>
+                  <div class="pillar-status" id="pillar-num-status">PASS</div>
+                  <div class="pillar-detail" id="pillar-num-detail"></div>
+                </div>
+              </div>
+
             </div>
           </div>
 
-          <div id="dim-synth-inputs">
-            <div class="form-group">
-              <label for="synth-quantities">Constituent Physical Quantities / Constants:</label>
-              <input type="text" id="synth-quantities" value="G, hbar, c" placeholder="e.g. G, hbar, c or Length, Acceleration">
-            </div>
-            <div class="form-group">
-              <label for="synth-target">Target Dimension / Quantity:</label>
-              <input type="text" id="synth-target" value="Length" placeholder="e.g. Length, Time, Mass, Energy">
-            </div>
-          </div>
+        </div>
+      </section>
 
-          <div id="cross-domain-inputs" class="hidden">
-            <div class="form-group">
-              <label for="disc-domain-1">Domain 1:</label>
-              <select id="disc-domain-1">
-                <option value="Quantum" selected>Quantum Mechanics</option>
-                <option value="Mechanics">Classical Mechanics</option>
-                <option value="Electromagnetism">Electromagnetism</option>
-                <option value="Thermodynamics">Thermodynamics</option>
-              </select>
+      <!-- ================= VIEW 4: COSMIC KNOWLEDGE GRAPH ================= -->
+      <section id="view-graph" class="view-panel">
+        <div class="graph-viewport-pod">
+          <div class="graph-hud-top">
+            <div class="graph-title-block">
+              <h2>Cosmic Physics Knowledge Graph</h2>
+              <p>Interactive network mapping physical quantities and invariant laws across Mechanics, EM, Thermo, Relativity & Quantum physics.</p>
             </div>
-            <div class="form-group">
-              <label for="disc-domain-2">Domain 2:</label>
-              <select id="disc-domain-2">
-                <option value="Relativity" selected>Relativity</option>
-                <option value="Electromagnetism">Electromagnetism</option>
-                <option value="Thermodynamics">Thermodynamics</option>
-                <option value="Quantum">Quantum Mechanics</option>
-              </select>
+            <div class="graph-legend">
+              <span class="legend-dot dot-mech"></span> Mechanics
+              <span class="legend-dot dot-em"></span> Electromagnetism
+              <span class="legend-dot dot-thermo"></span> Thermodynamics
+              <span class="legend-dot dot-rel"></span> Relativity
+              <span class="legend-dot dot-quant"></span> Quantum
             </div>
           </div>
-
-          <button id="btn-run-discover" class="btn-primary"><i data-lucide="sparkles"></i> Synthesize New Relations</button>
+          <div class="interactive-graph-container" id="physics-graph-stage">
+            <svg id="physics-svg-graph" width="100%" height="600"></svg>
+          </div>
         </div>
+      </section>
 
-        <div class="card glass-card output-card">
-          <div class="card-title"><i data-lucide="lightbulb"></i> Discovered Relations</div>
-          <div id="discovery-results" class="discovery-results">
-            <div class="empty-state">
-              <i data-lucide="telescope" class="big-icon"></i>
-              <p>Configure synthesis quantities or choose domain pairs to discover new physical relations.</p>
+      <!-- ================= VIEW 5: EQUATION CATALOG ================= -->
+      <section id="view-catalog" class="view-panel">
+        <div class="catalog-hud">
+          <div class="catalog-filters">
+            <div class="search-input-pill">
+              <i data-lucide="search"></i>
+              <input type="text" id="catalog-search-input" placeholder="Search equations by name, formula, symbol, or tag..." oninput="onCatalogSearch()">
             </div>
+            <div class="domain-pills" id="catalog-domain-pills">
+              <button class="dom-pill active" data-dom="all" onclick="filterCatalogDomain('all')">All Domains</button>
+              <button class="dom-pill" data-dom="Mechanics" onclick="filterCatalogDomain('Mechanics')">Mechanics</button>
+              <button class="dom-pill" data-dom="Electromagnetism" onclick="filterCatalogDomain('Electromagnetism')">Electromagnetism</button>
+              <button class="dom-pill" data-dom="Thermodynamics" onclick="filterCatalogDomain('Thermodynamics')">Thermodynamics</button>
+              <button class="dom-pill" data-dom="Relativity" onclick="filterCatalogDomain('Relativity')">Relativity</button>
+              <button class="dom-pill" data-dom="Quantum" onclick="filterCatalogDomain('Quantum')">Quantum</button>
+              <button class="dom-pill" data-dom="Mathematics" onclick="filterCatalogDomain('Mathematics')">Mathematics</button>
+            </div>
+          </div>
+          <div class="catalog-grid" id="catalog-cards-grid"></div>
+        </div>
+      </section>
+
+      <!-- ================= VIEW 6: PHYSICAL ONTOLOGY ================= -->
+      <section id="view-ontology" class="view-panel">
+        <div class="ontology-pod">
+          <div class="pod-header">
+            <div class="pod-title"><i data-lucide="binary"></i> Universal Quantity Registry & SI Dimensional Signatures</div>
+            <div class="search-input-pill-sm">
+              <i data-lucide="search"></i>
+              <input type="text" id="ontology-search" placeholder="Filter quantities..." oninput="onOntologySearch()">
+            </div>
+          </div>
+          <div class="ontology-table-wrap">
+            <table class="modern-table">
+              <thead>
+                <tr>
+                  <th>Physical Concept</th>
+                  <th>Canonical Symbol</th>
+                  <th>SI Base Exponents $[M, L, T, I, \Theta, N, J]$</th>
+                  <th>Accepted Variable Aliases</th>
+                  <th>Constants & Value</th>
+                  <th>Primary Domain</th>
+                </tr>
+              </thead>
+              <tbody id="ontology-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- RIGHT SIDECAR (PHYSICAL INSPECTOR & EXPORT DOCK) -->
+    <aside class="workbench-sidecar" id="workbench-sidecar">
+      <div class="sidecar-header">
+        <div class="sidecar-title"><i data-lucide="cpu"></i> Physical Inspector</div>
+      </div>
+
+      <div class="sidecar-section">
+        <div class="sidecar-label">Active Symbol Dimension Inspector:</div>
+        <div class="symbol-inspector-card" id="symbol-inspector-card">
+          <div class="sym-name" id="insp-sym-name">Select any symbol</div>
+          <div class="sym-dim-badge" id="insp-sym-dim">[M L T^-2]</div>
+          <div class="sym-desc" id="insp-sym-desc">Hover over any variable in a derivation step to inspect its canonical dimensional signature.</div>
+        </div>
+      </div>
+
+      <div class="sidecar-section">
+        <div class="sidecar-label">Fundamental Universal Constants:</div>
+        <div class="constants-mini-list" id="constants-mini-list">
+          <div class="const-row">
+            <span class="const-sym">c</span>
+            <span class="const-val">2.998e8 m/s</span>
+          </div>
+          <div class="const-row">
+            <span class="const-sym">G</span>
+            <span class="const-val">6.674e-11 m³/(kg s²)</span>
+          </div>
+          <div class="const-row">
+            <span class="const-sym">&#8463;</span>
+            <span class="const-val">1.055e-34 J s</span>
+          </div>
+          <div class="const-row">
+            <span class="const-sym">k_B</span>
+            <span class="const-val">1.381e-23 J/K</span>
+          </div>
+          <div class="const-row">
+            <span class="const-sym">&epsilon;_0</span>
+            <span class="const-val">8.854e-12 F/m</span>
+          </div>
+          <div class="const-row">
+            <span class="const-sym">&mu;_0</span>
+            <span class="const-val">1.257e-6 N/A²</span>
           </div>
         </div>
       </div>
-    </section>
 
-    <!-- TAB 4: KNOWLEDGE BASE -->
-    <section id="tab-catalog" class="tab-panel">
-      <div class="panel-header">
-        <h2>Universal Equation Knowledge Base</h2>
-        <p>Explore cataloged fundamental equations, definitions, and invariant relations across all physics domains.</p>
-      </div>
-
-      <div class="filter-bar">
-        <div class="search-box">
-          <i data-lucide="search"></i>
-          <input type="text" id="search-catalog" placeholder="Search equations by name, formula, or tag..." oninput="filterCatalog()">
-        </div>
-        <div class="domain-filters" id="domain-filter-chips">
-          <button class="filter-chip active" data-domain="all" onclick="setCatalogDomain('all')">All Domains</button>
-          <button class="filter-chip" data-domain="Mechanics" onclick="setCatalogDomain('Mechanics')">Mechanics</button>
-          <button class="filter-chip" data-domain="Electromagnetism" onclick="setCatalogDomain('Electromagnetism')">Electromagnetism</button>
-          <button class="filter-chip" data-domain="Thermodynamics" onclick="setCatalogDomain('Thermodynamics')">Thermodynamics</button>
-          <button class="filter-chip" data-domain="Relativity" onclick="setCatalogDomain('Relativity')">Relativity</button>
-          <button class="filter-chip" data-domain="Quantum" onclick="setCatalogDomain('Quantum')">Quantum</button>
-          <button class="filter-chip" data-domain="Mathematics" onclick="setCatalogDomain('Mathematics')">Mathematics</button>
+      <div class="sidecar-section">
+        <div class="sidecar-label">Export Center:</div>
+        <div class="export-buttons-stack">
+          <button class="btn-sidecar" onclick="copyLatexProof()"><i data-lucide="file-code"></i> Copy LaTeX Snippet</button>
+          <button class="btn-sidecar" onclick="copyMarkdownProof()"><i data-lucide="file-text"></i> Copy Markdown Proof</button>
+          <button class="btn-sidecar" onclick="copyPythonProof()"><i data-lucide="terminal"></i> Export SymPy Script</button>
         </div>
       </div>
+    </aside>
 
-      <div class="equations-grid" id="equations-grid">
-        <!-- Dynamically rendered -->
-      </div>
-    </section>
-
-    <!-- TAB 5: PHYSICAL ONTOLOGY -->
-    <section id="tab-quantities" class="tab-panel">
-      <div class="panel-header">
-        <h2>Universal Physical Quantity Ontology</h2>
-        <p>Canonical physical quantities with exact rational SI dimensional vectors $[M, L, T, I, \Theta, N, J]$ and symbol aliases.</p>
-      </div>
-
-      <div class="card glass-card">
-        <div class="table-responsive">
-          <table class="ontology-table" id="ontology-table">
-            <thead>
-              <tr>
-                <th>Quantity Concept</th>
-                <th>Canonical Symbol</th>
-                <th>SI Dimensions</th>
-                <th>Accepted Aliases / Notations</th>
-                <th>Domain / Nature</th>
-              </tr>
-            </thead>
-            <tbody id="ontology-tbody">
-              <!-- Dynamically rendered -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <footer class="app-footer">
-    <p>⚛ Equation-Derivator Engine • Deep Symbolic Physics & Mathematics AI</p>
-  </footer>
+  </div>
 
   <script src="app.js"></script>
 </body>
