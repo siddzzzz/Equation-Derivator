@@ -10,7 +10,7 @@ let currentDerivationResult = null;
 let currentSynthesisMode = 'dimensional';
 
 document.addEventListener('DOMContentLoaded', async () => {
-  lucide.createIcons();
+  if (window.lucide) lucide.createIcons();
   initNebulaBackground();
   initDockNavigation();
   initOmnibar();
@@ -18,6 +18,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   initDerivationEngine();
   initDiscoveryReactor();
   initVerifierEngine();
+
+  // Auto-render inline KaTeX math across initial page
+  if (window.renderMathInElement) {
+    renderMathInElement(document.body, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false}
+      ],
+      throwOnError: false
+    });
+  }
 
   await fetchQuantities();
   await fetchEquations();
