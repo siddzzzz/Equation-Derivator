@@ -91,23 +91,61 @@ class EquationKnowledgeBase:
                     matched.add(eq)
         return list(matched)
 
-    def find_path_between_quantities(self, start_qty: str, target_qty: str) -> List[List[str]]:
+    def find_minimal_derivation_equations(self, target_var: str, in_terms_of: List[str]) -> List[PhysicalEquation]:
         """
-        Finds derivation pathways (chains of equations) connecting start_qty to target_qty.
+        Finds the minimal set of equations from the knowledge base to derive target_var in terms of in_terms_of.
         """
-        if start_qty not in self._graph or target_qty not in self._graph:
-            return []
-        try:
-            paths = list(nx.all_shortest_paths(self._graph, source=start_qty, target=target_qty))
-            # Filter path to return sequence of equation IDs
-            eq_paths = []
-            for p in paths:
-                eq_sequence = [node for node in p if self._graph.nodes[node].get("type") == "equation"]
-                if eq_sequence and eq_sequence not in eq_paths:
-                    eq_paths.append(eq_sequence)
-            return eq_paths
-        except nx.NetworkXNoPath:
-            return []
+        target_qty = GLOBAL_QUANTITY_REGISTRY.lookup(target_var)
+        target_name = target_qty.name if target_qty else target_var
+
+        # 1. Candidate primary equations containing target
+        primary_candidates = []
+        for eq in self._equations.values():
+            if any(str(s) == target_var for s in eq.free_symbols):
+                primary_candidates.append(eq)
+
+        if not primary_candidates:
+            return self.find_connecting_equations([target_var] + in_terms_of)
+
+        best_eq_set: Optional[List[PhysicalEquation]] = None
+        min_extra_vars = 999
+
+        allowed_set = set(in_terms_of) | {target_var}
+
+        for p_eq in primary_candidates:
+            p_syms = {str(s) for s in p_eq.free_symbols}
+            unresolved = p_syms - allowed_set
+
+            # If all symbols in p_eq are already allowed, we're done with 1 equation!
+            if not unresolved:
+                return [p_eq]
+
+            current_chain = [p_eq]
+            chain_resolved = True
+
+            for unres_var in unresolved:
+                # Find an auxiliary equation that connects unres_var to variables in in_terms_of
+                best_aux = None
+                for aux_eq in self._equations.values():
+                    if aux_eq.id == p_eq.id:
+                        continue
+                    aux_syms = {str(s) for s in aux_eq.free_symbols}
+                    if unres_var in aux_syms and any(v in in_terms_of for v in aux_syms):
+                        # Prioritize auxiliary equations with highest overlap with in_terms_of
+                        best_aux = aux_eq
+                        break
+
+                if best_aux:
+                    if best_aux not in current_chain:
+                        current_chain.append(best_aux)
+                else:
+                    chain_resolved = False
+
+            if chain_resolved and len(current_chain) < min_extra_vars:
+                min_extra_vars = len(current_chain)
+                best_eq_set = current_chain
+
+        return best_eq_set if best_eq_set else primary_candidates
 
 
 # Global Knowledge Base Singleton

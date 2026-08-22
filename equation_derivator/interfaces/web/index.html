@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Equation-Derivator | Universal Physical & Mathematical AI Engine</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- KaTeX for High-Fidelity Math Rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="background-glow glow-1"></div>
+  <div class="background-glow glow-2"></div>
+
+  <header class="app-header">
+    <div class="logo-container">
+      <div class="logo-icon">⚛</div>
+      <div class="logo-text">
+        <h1>Equation<span class="gradient-text">Derivator</span></h1>
+        <p class="tagline">Universal AI Derivation, Discovery & Verification Engine</p>
+      </div>
+    </div>
+    <nav class="nav-tabs" id="main-nav">
+      <button class="nav-tab active" data-tab="derive"><i data-lucide="git-branch"></i> Multi-Step Derivation</button>
+      <button class="nav-tab" data-tab="verify"><i data-lucide="shield-check"></i> Equation Verifier</button>
+      <button class="nav-tab" data-tab="discover"><i data-lucide="sparkles"></i> Discovery Lab</button>
+      <button class="nav-tab" data-tab="catalog"><i data-lucide="book-open"></i> Knowledge Base</button>
+      <button class="nav-tab" data-tab="quantities"><i data-lucide="layers"></i> Physical Ontology</button>
+    </nav>
+  </header>
+
+  <main class="main-content">
+    <!-- TAB 1: DERIVATION ENGINE -->
+    <section id="tab-derive" class="tab-panel active">
+      <div class="panel-header">
+        <h2>Rigorous Multi-Step Symbolic Derivation</h2>
+        <p>Derive any physical or mathematical quantity in terms of chosen parameters with step-by-step reasoning.</p>
+      </div>
+
+      <div class="two-column-layout">
+        <!-- Input Form -->
+        <div class="card glass-card form-card">
+          <div class="card-title"><i data-lucide="sliders"></i> Derivation Parameters</div>
+          
+          <div class="preset-section">
+            <label>Quick Presets:</label>
+            <div class="preset-chips">
+              <button class="chip" onclick="loadPreset('ke_momentum')">Kinetic Energy from Momentum ($K(p, m)$)</button>
+              <button class="chip" onclick="loadPreset('escape_velocity')">Escape Velocity ($v(G, M, r)$)</button>
+              <button class="chip" onclick="loadPreset('power_ir')">Joule Heating Power ($P(I, R)$)</button>
+              <button class="chip" onclick="loadPreset('work_energy_calculus')">Work-Energy Calculus Theorem ($W = \Delta K$)</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="target-var">Target Quantity / Variable to Derive:</label>
+            <input type="text" id="target-var" placeholder="e.g. K, v, P, E, T" value="K">
+          </div>
+
+          <div class="form-group">
+            <label for="in-terms-of">Express in Terms Of (comma-separated):</label>
+            <input type="text" id="in-terms-of" placeholder="e.g. p, m" value="p, m">
+          </div>
+
+          <div class="form-group">
+            <label for="starting-eqs">Starting Equations (optional; auto-discovered if blank):</label>
+            <input type="text" id="starting-eqs" placeholder="e.g. kinetic_energy_def; linear_momentum_def">
+            <small>Leave empty to auto-traverse the Universal Knowledge Graph.</small>
+          </div>
+
+          <button id="btn-run-derive" class="btn-primary"><i data-lucide="play"></i> Execute Multi-Step Derivation</button>
+        </div>
+
+        <!-- Result Output -->
+        <div class="card glass-card output-card">
+          <div class="card-title">
+            <span><i data-lucide="file-text"></i> Derivation Result</span>
+            <div id="derive-actions" class="card-actions hidden">
+              <button class="btn-sm" onclick="copyDeriveMarkdown()"><i data-lucide="copy"></i> Copy Markdown</button>
+            </div>
+          </div>
+
+          <div id="derive-loading" class="loading-state hidden">
+            <div class="spinner"></div>
+            <p>Solving symbolic derivation pathway & verifying dimensional consistency...</p>
+          </div>
+
+          <div id="derive-placeholder" class="empty-state">
+            <i data-lucide="compass" class="big-icon"></i>
+            <p>Select a preset or enter parameters and click <strong>Execute Multi-Step Derivation</strong> to generate complete step-by-step mathematical reasoning.</p>
+          </div>
+
+          <div id="derive-result-container" class="result-container hidden">
+            <div class="final-banner">
+              <div class="banner-badge verified"><i data-lucide="check-circle-2"></i> Verified Sound</div>
+              <div class="final-formula-box">
+                <span class="label">Derived Law:</span>
+                <div id="final-math-display" class="katex-display-box"></div>
+              </div>
+            </div>
+
+            <div id="assumptions-box" class="assumptions-box hidden">
+              <h4>Physical Assumptions & Conditions of Validity:</h4>
+              <ul id="assumptions-list"></ul>
+            </div>
+
+            <h3>Mathematical Steps & Transformations:</h3>
+            <div id="steps-chain" class="steps-chain"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: EQUATION VERIFIER -->
+    <section id="tab-verify" class="tab-panel">
+      <div class="panel-header">
+        <h2>Multi-Aspect Equation Verifier</h2>
+        <p>Rigorously audits equations against dimensional homogeneity, algebraic identities, and numerical Monte Carlo tests.</p>
+      </div>
+
+      <div class="two-column-layout">
+        <div class="card glass-card form-card">
+          <div class="card-title"><i data-lucide="shield-alert"></i> Input Equation for Verification</div>
+          
+          <div class="form-group">
+            <label for="verify-input">Equation Formula (LHS = RHS):</label>
+            <input type="text" id="verify-input" placeholder="e.g. E^2 = (p*c)^2 + (m*c^2)^2" value="E^2 = (p*c)^2 + (m*c^2)^2">
+          </div>
+
+          <div class="preset-section">
+            <label>Verify Examples:</label>
+            <div class="preset-chips">
+              <button class="chip" onclick="setVerifyInput('E^2 = (p*c)^2 + (m*c^2)^2')">Relativistic Energy-Momentum</button>
+              <button class="chip" onclick="setVerifyInput('P = I^2 * R')">Joule Dissipation Law</button>
+              <button class="chip" onclick="setVerifyInput('T = 2 * pi * sqrt(L / g)')">Pendulum Period</button>
+              <button class="chip" onclick="setVerifyInput('F = m * v')">Invalid Formula (F = mv)</button>
+            </div>
+          </div>
+
+          <button id="btn-run-verify" class="btn-primary"><i data-lucide="check-check"></i> Run Comprehensive Verification</button>
+        </div>
+
+        <div class="card glass-card output-card">
+          <div class="card-title"><i data-lucide="clipboard-check"></i> Audit Report</div>
+          
+          <div id="verify-placeholder" class="empty-state">
+            <i data-lucide="shield-check" class="big-icon"></i>
+            <p>Enter an equation on the left to verify its dimensions, algebraic consistency, and physical bounds.</p>
+          </div>
+
+          <div id="verify-report-container" class="result-container hidden">
+            <div id="verify-overall-badge" class="overall-badge"></div>
+            <div class="audit-grid" id="audit-grid"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: DISCOVERY LAB -->
+    <section id="tab-discover" class="tab-panel">
+      <div class="panel-header">
+        <h2>Equation Discovery & Synthesis Lab</h2>
+        <p>Synthesize new physical scaling laws using the Buckingham $\Pi$ theorem and discover cross-domain bridges.</p>
+      </div>
+
+      <div class="two-column-layout">
+        <div class="card glass-card form-card">
+          <div class="card-title"><i data-lucide="cpu"></i> Discovery Synthesis Settings</div>
+          
+          <div class="form-group">
+            <label>Discovery Mode:</label>
+            <div class="radio-group">
+              <label class="radio-label">
+                <input type="radio" name="disc-mode" value="dimensional" checked onchange="toggleDiscoveryMode()">
+                <span>Buckingham $\Pi$ Dimensional Synthesis</span>
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="disc-mode" value="cross_domain" onchange="toggleDiscoveryMode()">
+                <span>Cross-Domain Bridge Composition</span>
+              </label>
+            </div>
+          </div>
+
+          <div id="dim-synth-inputs">
+            <div class="form-group">
+              <label for="synth-quantities">Constituent Physical Quantities / Constants:</label>
+              <input type="text" id="synth-quantities" value="G, hbar, c" placeholder="e.g. G, hbar, c or Length, Acceleration">
+            </div>
+            <div class="form-group">
+              <label for="synth-target">Target Dimension / Quantity:</label>
+              <input type="text" id="synth-target" value="Length" placeholder="e.g. Length, Time, Mass, Energy">
+            </div>
+          </div>
+
+          <div id="cross-domain-inputs" class="hidden">
+            <div class="form-group">
+              <label for="disc-domain-1">Domain 1:</label>
+              <select id="disc-domain-1">
+                <option value="Quantum" selected>Quantum Mechanics</option>
+                <option value="Mechanics">Classical Mechanics</option>
+                <option value="Electromagnetism">Electromagnetism</option>
+                <option value="Thermodynamics">Thermodynamics</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="disc-domain-2">Domain 2:</label>
+              <select id="disc-domain-2">
+                <option value="Relativity" selected>Relativity</option>
+                <option value="Electromagnetism">Electromagnetism</option>
+                <option value="Thermodynamics">Thermodynamics</option>
+                <option value="Quantum">Quantum Mechanics</option>
+              </select>
+            </div>
+          </div>
+
+          <button id="btn-run-discover" class="btn-primary"><i data-lucide="sparkles"></i> Synthesize New Relations</button>
+        </div>
+
+        <div class="card glass-card output-card">
+          <div class="card-title"><i data-lucide="lightbulb"></i> Discovered Relations</div>
+          <div id="discovery-results" class="discovery-results">
+            <div class="empty-state">
+              <i data-lucide="telescope" class="big-icon"></i>
+              <p>Configure synthesis quantities or choose domain pairs to discover new physical relations.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: KNOWLEDGE BASE -->
+    <section id="tab-catalog" class="tab-panel">
+      <div class="panel-header">
+        <h2>Universal Equation Knowledge Base</h2>
+        <p>Explore cataloged fundamental equations, definitions, and invariant relations across all physics domains.</p>
+      </div>
+
+      <div class="filter-bar">
+        <div class="search-box">
+          <i data-lucide="search"></i>
+          <input type="text" id="search-catalog" placeholder="Search equations by name, formula, or tag..." oninput="filterCatalog()">
+        </div>
+        <div class="domain-filters" id="domain-filter-chips">
+          <button class="filter-chip active" data-domain="all" onclick="setCatalogDomain('all')">All Domains</button>
+          <button class="filter-chip" data-domain="Mechanics" onclick="setCatalogDomain('Mechanics')">Mechanics</button>
+          <button class="filter-chip" data-domain="Electromagnetism" onclick="setCatalogDomain('Electromagnetism')">Electromagnetism</button>
+          <button class="filter-chip" data-domain="Thermodynamics" onclick="setCatalogDomain('Thermodynamics')">Thermodynamics</button>
+          <button class="filter-chip" data-domain="Relativity" onclick="setCatalogDomain('Relativity')">Relativity</button>
+          <button class="filter-chip" data-domain="Quantum" onclick="setCatalogDomain('Quantum')">Quantum</button>
+          <button class="filter-chip" data-domain="Mathematics" onclick="setCatalogDomain('Mathematics')">Mathematics</button>
+        </div>
+      </div>
+
+      <div class="equations-grid" id="equations-grid">
+        <!-- Dynamically rendered -->
+      </div>
+    </section>
+
+    <!-- TAB 5: PHYSICAL ONTOLOGY -->
+    <section id="tab-quantities" class="tab-panel">
+      <div class="panel-header">
+        <h2>Universal Physical Quantity Ontology</h2>
+        <p>Canonical physical quantities with exact rational SI dimensional vectors $[M, L, T, I, \Theta, N, J]$ and symbol aliases.</p>
+      </div>
+
+      <div class="card glass-card">
+        <div class="table-responsive">
+          <table class="ontology-table" id="ontology-table">
+            <thead>
+              <tr>
+                <th>Quantity Concept</th>
+                <th>Canonical Symbol</th>
+                <th>SI Dimensions</th>
+                <th>Accepted Aliases / Notations</th>
+                <th>Domain / Nature</th>
+              </tr>
+            </thead>
+            <tbody id="ontology-tbody">
+              <!-- Dynamically rendered -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p>⚛ Equation-Derivator Engine • Deep Symbolic Physics & Mathematics AI</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,278 @@
+import sys
+import argparse
+
+# Ensure stdout uses UTF-8 where possible on Windows
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich.markdown import Markdown
+
+from equation_derivator.knowledge.database import GLOBAL_KNOWLEDGE_BASE
+import equation_derivator.knowledge.domains
+from equation_derivator.core.quantities import GLOBAL_QUANTITY_REGISTRY
+from equation_derivator.core.equation import PhysicalEquation
+from equation_derivator.derivation.engine import DerivationEngine
+from equation_derivator.verifier.verifier import EquationVerifier
+from equation_derivator.discovery.discovery_engine import DiscoveryEngine
+
+console = Console()
+
+
+def print_banner():
+    banner_text = "[bold cyan]EQUATION-DERIVATOR[/bold cyan]\n[dim]Universal AI Equation Derivation, Discovery & Verification Engine[/dim]"
+    console.print(Panel(banner_text, border_style="cyan", expand=False))
+
+
+def handle_derive(args):
+    print_banner()
+    engine = DerivationEngine(GLOBAL_KNOWLEDGE_BASE)
+    
+    target = args.target.strip()
+    in_terms_of = [s.strip() for s in args.in_terms_of.split(",") if s.strip()]
+    
+    starting_eqs = None
+    if args.equations:
+        starting_eqs = [s.strip() for s in args.equations.split(";") if s.strip()]
+
+    with console.status(f"[bold green]Deriving ${target}$ in terms of {in_terms_of}..."):
+        try:
+            result = engine.derive(
+                target_variable=target,
+                in_terms_of=in_terms_of,
+                starting_equations=starting_eqs
+            )
+        except Exception as e:
+            console.print(f"[bold red]Derivation Error:[/bold red] {e}")
+            return
+
+    console.print(Panel(
+        f"[bold yellow]Final Result:[/bold yellow] [bold green]{result.final_equation}[/bold green]\n"
+        f"[dim]LaTeX:[/dim] `{result.final_latex}`",
+        title=f"🎯 Derivation for {target}",
+        border_style="green"
+    ))
+
+    console.print("\n[bold cyan]Step-by-Step Derivation Chain:[/bold cyan]")
+    for s in result.steps:
+        table = Table(show_header=False, box=None, padding=(0, 1))
+        table.add_row("[bold magenta]Step " + str(s.step_number) + ":[/bold magenta]", f"[bold yellow]{s.operation}[/bold yellow]")
+        table.add_row("[dim]Formula:[/dim]", f"[green]{s.expression}[/green]")
+        table.add_row("[dim]LaTeX:[/dim]", f"`{s.latex}`")
+        table.add_row("[dim]Reasoning:[/dim]", f"{s.explanation}")
+        if s.substituted_symbol:
+            table.add_row("[dim]Substituted:[/dim]", f"{s.substituted_symbol} -> {s.substitution_value}")
+        console.print(Panel(table, border_style="blue"))
+
+    if result.all_assumptions:
+        console.print("\n[bold yellow]Physical Assumptions & Validity Conditions:[/bold yellow]")
+        for a in result.all_assumptions:
+            console.print(f"  • [dim]{a}[/dim]")
+
+    status_color = "bold green" if result.is_verified else "bold red"
+    status_icon = "✔ VERIFIED SOUND" if result.is_verified else "⚠ UNVERIFIED"
+    console.print(f"\n[{status_color}]Verification Status: {status_icon}[/{status_color}]")
+
+
+def handle_verify(args):
+    print_banner()
+    verifier = EquationVerifier()
+    eq_str = args.equation.strip()
+
+    try:
+        eq = PhysicalEquation.create(
+            id="cli_verify_eq",
+            name="Equation to Verify",
+            domain="Custom",
+            equation_str=eq_str
+        )
+        report = verifier.verify_equation(eq)
+    except Exception as e:
+        console.print(f"[bold red]Verification Error:[/bold red] {e}")
+        return
+
+    table = Table(title=f"Verification Report: {eq_str}", border_style="cyan")
+    table.add_column("Aspect", style="bold yellow")
+    table.add_column("Status", style="bold")
+    table.add_column("Details", style="dim")
+
+    dim_res = report["dimensional_check"]
+    table.add_row(
+        "Dimensional Consistency",
+        "[green]PASS[/green]" if dim_res["valid"] else "[red]FAIL[/red]",
+        dim_res["message"]
+    )
+
+    sym_res = report["symbolic_check"]
+    table.add_row(
+        "Symbolic Equivalence",
+        "[green]PASS[/green]" if sym_res["valid"] else "[yellow]INCONCLUSIVE[/yellow]",
+        sym_res["message"]
+    )
+
+    num_res = report["numerical_check"]
+    table.add_row(
+        "Monte Carlo Random Sampling",
+        "[green]PASS[/green]" if num_res["valid"] else "[red]FAIL[/red]",
+        num_res["message"]
+    )
+
+    console.print(table)
+    overall = report["overall_valid"]
+    color = "bold green" if overall else "bold red"
+    console.print(f"\n[{color}]Overall Assessment: {'EQUATION IS SOUND & CONSISTENT' if overall else 'EQUATION FAILED VALIDATION'}[/{color}]")
+
+
+def handle_discover(args):
+    print_banner()
+    engine = DiscoveryEngine(GLOBAL_KNOWLEDGE_BASE)
+
+    if args.quantities:
+        q_list = [q.strip() for q in args.quantities.split(",") if q.strip()]
+        target = args.target.strip()
+        with console.status(f"[bold green]Synthesizing dimensional relations for {target}..."):
+            results = engine.synthesize_dimensional_relation(q_list, target)
+
+        if not results:
+            console.print("[yellow]No power-law relations could be formed with the given quantities.[/yellow]")
+            return
+
+        console.print(f"\n[bold cyan]Discovered Dimensional Scaling Relations for {target}:[/bold cyan]\n")
+        for i, res in enumerate(results, 1):
+            console.print(Panel(
+                f"[bold green]{res.formula}[/bold green]\n"
+                f"[dim]LaTeX:[/dim] `{res.latex}`\n"
+                f"[dim]Dimension:[/dim] {res.dimension}\n"
+                f"[dim]Notes:[/dim] {res.notes}",
+                title=f"Candidate {i}: {res.name}",
+                border_style="green"
+            ))
+
+    elif args.cross_domain:
+        domains = [d.strip() for d in args.cross_domain.split(",") if d.strip()]
+        if len(domains) != 2:
+            console.print("[red]Please specify two domains separated by comma, e.g. --cross-domain 'Quantum,Relativity'[/red]")
+            return
+        with console.status(f"[bold green]Discovering bridge equations between {domains[0]} and {domains[1]}..."):
+            bridges = engine.discover_cross_domain_relations(domains[0], domains[1])
+
+        console.print(f"\n[bold cyan]Discovered Cross-Domain Bridge Relations:[/bold cyan]\n")
+        for i, b in enumerate(bridges, 1):
+            console.print(Panel(
+                f"[bold green]{b.formula}[/bold green]\n"
+                f"[dim]LaTeX:[/dim] `{b.latex}`\n"
+                f"[dim]Source Laws:[/dim] {', '.join(b.source_equations)}\n"
+                f"[dim]Notes:[/dim] {b.notes}",
+                title=f"Bridge {i}: {b.name}",
+                border_style="magenta"
+            ))
+
+
+def handle_browse(args):
+    print_banner()
+    eqs = GLOBAL_KNOWLEDGE_BASE.list_all()
+    if args.domain:
+        eqs = [e for e in eqs if e.domain.lower() == args.domain.lower()]
+
+    table = Table(title="Universal Equation Knowledge Base", border_style="cyan")
+    table.add_column("ID", style="bold cyan")
+    table.add_column("Name", style="bold white")
+    table.add_column("Domain", style="magenta")
+    table.add_column("Formula", style="green")
+    table.add_column("Tags", style="dim")
+
+    for e in eqs:
+        table.add_row(e.id, e.name, e.domain, e.raw_str, ", ".join(e.tags[:3]))
+
+    console.print(table)
+    console.print(f"[dim]Total Equations in Catalog: {len(eqs)}[/dim]")
+
+
+def handle_quantities(args):
+    print_banner()
+    qtys = GLOBAL_QUANTITY_REGISTRY.list_all()
+    table = Table(title="Universal Physical Quantities Registry", border_style="cyan")
+    table.add_column("Quantity Name", style="bold cyan")
+    table.add_column("Symbol", style="bold green")
+    table.add_column("Dimension", style="yellow")
+    table.add_column("Aliases", style="dim")
+    table.add_column("Constant?", style="magenta")
+
+    for q in qtys:
+        table.add_row(
+            q.name,
+            q.canonical_symbol,
+            str(q.dimension),
+            ", ".join(q.aliases[:4]),
+            f"Yes ({q.constant_value:.3e} {q.constant_unit})" if q.is_constant else "No"
+        )
+
+    console.print(table)
+
+
+def handle_serve(args):
+    print_banner()
+    import uvicorn
+    console.print(f"[bold green]Starting Equation Derivator Web Interface on http://localhost:{args.port}...[/bold green]")
+    uvicorn.run("equation_derivator.interfaces.api:app", host=args.host, port=args.port, reload=False)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Equation-Derivator: Universal AI Equation Derivation, Discovery & Verification Engine"
+    )
+    subparsers = parser.add_subparsers(dest="command", help="Command to run")
+
+    # derive
+    p_derive = subparsers.add_parser("derive", help="Derive formula for target variable")
+    p_derive.add_argument("--target", "-t", required=True, help="Target variable (e.g. K, v, P, E)")
+    p_derive.add_argument("--in-terms-of", "-i", required=True, help="Comma-separated allowed variables (e.g. p,m)")
+    p_derive.add_argument("--equations", "-e", help="Semicolon-separated equation IDs or formulas")
+
+    # verify
+    p_verify = subparsers.add_parser("verify", help="Verify physical/dimensional consistency of equation")
+    p_verify.add_argument("--equation", "-e", required=True, help="Equation string (e.g. 'F = m*a')")
+
+    # discover
+    p_discover = subparsers.add_parser("discover", help="Discover new relations or scaling laws")
+    p_discover.add_argument("--quantities", "-q", help="Comma-separated input quantities (e.g. 'G,hbar,c')")
+    p_discover.add_argument("--target", "-t", default="Length", help="Target quantity or dimension")
+    p_discover.add_argument("--cross-domain", "-cd", help="Comma-separated domains (e.g. 'Quantum,Relativity')")
+
+    # browse
+    p_browse = subparsers.add_parser("browse", help="Browse catalog of equations")
+    p_browse.add_argument("--domain", "-d", help="Filter by domain")
+
+    # quantities
+    subparsers.add_parser("quantities", help="List physical quantities and dimensions")
+
+    # serve
+    p_serve = subparsers.add_parser("serve", help="Launch interactive web server")
+    p_serve.add_argument("--host", default="127.0.0.1", help="Host address")
+    p_serve.add_argument("--port", type=int, default=8000, help="Port")
+
+    args = parser.parse_args()
+
+    if args.command == "derive":
+        handle_derive(args)
+    elif args.command == "verify":
+        handle_verify(args)
+    elif args.command == "discover":
+        handle_discover(args)
+    elif args.command == "browse":
+        handle_browse(args)
+    elif args.command == "quantities":
+        handle_quantities(args)
+    elif args.command == "serve":
+        handle_serve(args)
+    else:
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()

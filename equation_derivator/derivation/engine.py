@@ -66,10 +66,8 @@ class DerivationEngine:
                         else:
                             raise ValueError(f"Unknown equation ID in knowledge base: '{item}'")
         else:
-            # Auto-discover candidate equations connecting target and in_terms_of
-            candidate_vars = [target_variable] + in_terms_of
-            candidate_eqs = self.kb.find_connecting_equations(candidate_vars)
-            equations = candidate_eqs
+            # Auto-discover minimal candidate equations connecting target and in_terms_of
+            equations = self.kb.find_minimal_derivation_equations(target_variable, in_terms_of)
 
         if not equations:
             raise ValueError(
