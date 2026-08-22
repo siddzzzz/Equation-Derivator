@@ -33,6 +33,7 @@ from equation_derivator.core.dimensions import (
     DIM_FREQUENCY,
     DIM_ANGULAR_VELOCITY,
     DIM_MOMENT_OF_INERTIA,
+    DIM_SPRING_CONSTANT,
     DIM_CHARGE,
     DIM_VOLTAGE,
     DIM_ELECTRIC_FIELD,
@@ -47,6 +48,7 @@ from equation_derivator.core.dimensions import (
     DIM_GRAVITATIONAL_CONSTANT,
     DIM_PLANCK_CONSTANT,
     DIM_BOLTZMANN_CONSTANT,
+    DIM_STEFAN_BOLTZMANN,
 )
 
 
@@ -207,7 +209,7 @@ class QuantityRegistry:
         self.register(PhysicalQuantity(
             name="LinearMomentum", canonical_symbol="p", dimension=DIM_MOMENTUM,
             description="Product of mass and velocity",
-            aliases=["P", "p_0", "p_x", "p_y", "momentum"],
+            aliases=["p_0", "p_x", "p_y", "momentum"],
             domains=["Mechanics", "Relativity", "Quantum"]
         ))
         self.register(PhysicalQuantity(
@@ -220,7 +222,7 @@ class QuantityRegistry:
         self.register(PhysicalQuantity(
             name="PotentialEnergy", canonical_symbol="U", dimension=DIM_ENERGY,
             description="Energy stored due to position or configuration",
-            aliases=["V", "PE", "E_p", "U_g", "U_e", "potential_energy"],
+            aliases=["PE", "E_p", "U_g", "U_e", "potential_energy"],
             latex_symbol="U",
             domains=["Mechanics", "Electromagnetism", "Quantum"]
         ))
@@ -237,16 +239,16 @@ class QuantityRegistry:
             domains=["Mechanics", "Thermodynamics"]
         ))
         self.register(PhysicalQuantity(
-            name="Power", canonical_symbol="P_pow", dimension=DIM_POWER,
+            name="Power", canonical_symbol="P", dimension=DIM_POWER,
             description="Rate of doing work or transferring energy",
-            aliases=["P", "power"],
+            aliases=["P_pow", "power"],
             latex_symbol="P",
             domains=["Mechanics", "Electromagnetism", "Thermodynamics"]
         ))
         self.register(PhysicalQuantity(
             name="Pressure", canonical_symbol="P_press", dimension=DIM_PRESSURE,
             description="Force applied perpendicular to surface per unit area",
-            aliases=["p", "P", "pressure", "P_0"],
+            aliases=["p_press", "pressure", "P_0"],
             latex_symbol="P",
             domains=["Thermodynamics", "Fluid Dynamics", "Astrophysics"]
         ))
@@ -298,6 +300,13 @@ class QuantityRegistry:
             aliases=["w", "ang_freq"],
             latex_symbol=r"\omega",
             domains=["Mechanics", "Waves", "Quantum", "Electromagnetism"]
+        ))
+        self.register(PhysicalQuantity(
+            name="SpringConstant", canonical_symbol="k_spring", dimension=DIM_SPRING_CONSTANT,
+            description="Stiffness of a spring in Hooke's Law",
+            aliases=["k", "spring_constant"],
+            latex_symbol="k",
+            domains=["Mechanics", "Oscillations"]
         ))
 
         # Electromagnetism
@@ -412,6 +421,14 @@ class QuantityRegistry:
             latex_symbol=r"\mu_0",
             is_constant=True, constant_value=1.25663706212e-6, constant_unit="N/A^2",
             domains=["Electromagnetism"]
+        ))
+        self.register(PhysicalQuantity(
+            name="StefanBoltzmannConstant", canonical_symbol="sigma", dimension=DIM_STEFAN_BOLTZMANN,
+            description="Stefan-Boltzmann radiation constant",
+            aliases=["stefan_boltzmann", "sigma_sb"],
+            latex_symbol=r"\sigma",
+            is_constant=True, constant_value=5.670374419e-8, constant_unit="W/(m^2 K^4)",
+            domains=["Thermodynamics", "Astrophysics"]
         ))
 
 

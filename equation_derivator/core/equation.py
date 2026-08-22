@@ -29,6 +29,14 @@ class PhysicalEquation:
     latex_override: Optional[str] = None
     description: str = ""
 
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, PhysicalEquation):
+            return False
+        return self.id == other.id
+
     @property
     def free_symbols(self) -> Set[sp.Symbol]:
         return self.lhs.free_symbols.union(self.rhs.free_symbols)

@@ -75,11 +75,12 @@ class VariableContext:
         # Handle Greek symbols or unicode if needed
         clean_str = clean_str.replace("π", "pi").replace("ħ", "hbar")
         
-        # Pre-populate local symbol dictionary for known quantities
+        # Find all alphanumeric variable tokens
         symbols_found = re.findall(r"\b[A-Za-z_][A-Za-z0-9_]*\b", clean_str)
+
+        # Pre-populate local dictionary for standard math functions
         local_dict = {
             "pi": sp.pi,
-            "E": sp.E,
             "sqrt": sp.sqrt,
             "exp": sp.exp,
             "sin": sp.sin,
@@ -87,6 +88,9 @@ class VariableContext:
             "tan": sp.tan,
             "ln": sp.log,
             "log": sp.log,
+            "asin": sp.asin,
+            "acos": sp.acos,
+            "atan": sp.atan,
         }
         for s in symbols_found:
             if s not in local_dict:
