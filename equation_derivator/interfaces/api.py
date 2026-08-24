@@ -47,12 +47,37 @@ class VerifyRequest(BaseModel):
     bindings: Optional[Dict[str, str]] = None
 
 
+class LagrangianRequest(BaseModel):
+    lagrangian: str
+    coordinates: List[str]
+    system_name: Optional[str] = "Variational System"
+
+
+class DiffEqRequest(BaseModel):
+    type: str = "damped"  # "damped" or "schrodinger"
+    driving_force: Optional[str] = None
+
+
+class TensorRequest(BaseModel):
+    metric: str = "schwarzschild"  # "schwarzschild", "flrw", "minkowski"
+
+
+class AskRequest(BaseModel):
+    query: str
+
+
 class DiscoverRequest(BaseModel):
     mode: str  # "dimensional" or "cross_domain"
     quantities: Optional[List[str]] = None
     target: Optional[str] = "Length"
     domain1: Optional[str] = None
     domain2: Optional[str] = None
+
+
+class PaperRequest(BaseModel):
+    target: str
+    in_terms_of: List[str]
+    title: Optional[str] = None
 
 
 # Endpoints
@@ -143,6 +168,108 @@ def discover_endpoint(req: DiscoverRequest):
             return [r.to_dict() for r in results]
         else:
             raise HTTPException(status_code=400, detail=f"Unknown discovery mode: '{req.mode}'")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/lagrangian")
+def lagrangian_endpoint(req: LagrangianRequest):
+    from equation_derivator.calculus.variational import VariationalEngine
+    engine = VariationalEngine()
+    try:
+        res = engine.derive(
+            lagrangian=req.lagrangian,
+            coordinates=req.coordinates,
+            system_name=req.system_name or "Variational System"
+        )
+        return {
+            "system_name": res.system_name,
+            "coordinates": res.coordinates,
+            "lagrangian_latex": res.lagrangian_latex,
+            "euler_lagrange_equations": [
+                {
+                    "coord": eq["coord"],
+                    "equation_latex": eq["equation_latex"],
+                    "acceleration_latex": eq.get("acceleration_latex")
+                }
+                for eq in res.euler_lagrange_equations
+            ],
+            "hamiltonian": res.hamiltonian,
+            "noether_conserved_quantities": res.noether_conserved_quantities,
+            "markdown": res.to_markdown()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/diff-eq")
+def diff_eq_endpoint(req: DiffEqRequest):
+    from equation_derivator.calculus.differential import DifferentialEquationSolver
+    solver = DifferentialEquationSolver()
+    try:
+        if req.type == "schrodinger":
+            res = solver.solve_quantum_infinite_well()
+        else:
+            res = solver.solve_damped_harmonic_oscillator(driving_force=req.driving_force)
+        return {
+            "name": res.name,
+            "ode_type": res.ode_type,
+            "differential_equation_latex": res.differential_equation_latex,
+            "general_solution_latex": res.general_solution_latex,
+            "eigenvalues_and_states": res.eigenvalues_and_states,
+            "markdown": res.to_markdown()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/tensors")
+def tensor_endpoint(req: TensorRequest):
+    from equation_derivator.calculus.tensors import SpacetimeTensorEngine
+    import sympy as sp
+    engine = SpacetimeTensorEngine()
+    try:
+        if req.metric == "schwarzschild":
+            res = engine.create_schwarzschild_metric()
+        elif req.metric == "flrw":
+            res = engine.create_flrw_metric()
+        else:
+            res = engine.create_minkowski_metric()
+        return {
+            "metric_name": res.metric_name,
+            "coordinates": res.coordinates,
+            "metric_latex": sp.latex(res.metric_matrix),
+            "ricci_scalar_latex": sp.latex(res.ricci_scalar),
+            "einstein_tensor_latex": sp.latex(res.einstein_tensor),
+            "is_vacuum_solution": res.is_vacuum_solution,
+            "geodesic_equations": res.geodesic_equations,
+            "markdown": res.to_markdown()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/ask")
+def ask_endpoint(req: AskRequest):
+    from equation_derivator.interfaces.nlp import PhysicsQueryDispatcher
+    dispatcher = PhysicsQueryDispatcher()
+    try:
+        res = dispatcher.process_query(req.query)
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/paper")
+def paper_endpoint(req: PaperRequest):
+    from equation_derivator.derivation.engine import DerivationEngine
+    from equation_derivator.interfaces.paper_generator import ScientificPaperGenerator
+    engine = DerivationEngine(GLOBAL_KNOWLEDGE_BASE)
+    generator = ScientificPaperGenerator()
+    try:
+        deriv = engine.derive(target_variable=req.target, in_terms_of=req.in_terms_of)
+        tex_code = generator.generate_derivation_paper(deriv.to_dict(), title=req.title)
+        return {"latex_source": tex_code, "target": req.target}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

@@ -714,7 +714,209 @@ function renderOntologyTable() {
   `).join('');
 }
 
+/* ================= VARIATIONAL MECHANICS & TENSORS ================= */
+let selectedTensorMetric = 'schwarzschild';
+
+function loadVariationalPreset(key) {
+  const lagInput = document.getElementById('var-lagrangian-input');
+  const coordsInput = document.getElementById('var-coords-input');
+  if (key === 'pendulum') {
+    lagInput.value = '1/2 * m * L^2 * theta_dot^2 - m * g * L * (1 - cos(theta))';
+    coordsInput.value = 'theta';
+  } else if (key === 'harmonic') {
+    lagInput.value = '1/2 * m * x_dot^2 - 1/2 * k * x^2';
+    coordsInput.value = 'x';
+  } else if (key === 'free_2d') {
+    lagInput.value = '1/2 * m * (x_dot^2 + y_dot^2)';
+    coordsInput.value = 'x, y';
+  }
+  executeVariationalDerivation();
+}
+
+async function executeVariationalDerivation() {
+  const lag = document.getElementById('var-lagrangian-input').value.trim();
+  const coordsRaw = document.getElementById('var-coords-input').value.trim();
+  if (!lag || !coordsRaw) return;
+
+  const coordinates = coordsRaw.split(',').map(s => s.trim()).filter(Boolean);
+  const emptyState = document.getElementById('var-empty-state');
+  const stage = document.getElementById('var-content-stage');
+
+  emptyState.classList.add('hidden');
+  stage.innerHTML = '<div class="canvas-loading-state"><div class="reactor-spinner"><div class="reactor-core"></div></div><div class="loading-label">Evaluating Euler-Lagrange & Hamiltonian Mechanics...</div></div>';
+  stage.classList.remove('hidden');
+
+  try {
+    const res = await fetch('/api/lagrangian', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lagrangian: lag, coordinates, system_name: 'Variational System' })
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Failed');
+    const data = await res.json();
+
+    let html = `
+      <div class="derived-banner">
+        <div class="derived-banner-header">
+          <div class="verified-tag"><i data-lucide="orbit"></i> EULER-LAGRANGE EQUATIONS OF MOTION</div>
+          <div class="tag-domain">${data.system_name}</div>
+        </div>
+        <div class="math-hero" id="var-hero-lag"></div>
+      </div>
+      <div class="dag-container"><div class="dag-steps">
+    `;
+
+    data.euler_lagrange_equations.forEach((eq, idx) => {
+      html += `
+        <div class="dag-node">
+          <div class="dag-node-header">
+            <span class="step-order-badge">Coordinate $${eq.coord}$</span>
+            <span class="step-op-title">Equation of Motion & Acceleration</span>
+          </div>
+          <div class="dag-formula-box" id="var-el-eq-${idx}"></div>
+          ${eq.acceleration_latex ? `<div class="dag-formula-box" style="margin-top: 0.5rem; border-left-color: var(--plasma-violet);" id="var-accel-${idx}"></div>` : ''}
+        </div>
+      `;
+    });
+
+    if (data.hamiltonian) {
+      html += `
+        <div class="dag-node">
+          <div class="dag-node-header">
+            <span class="step-order-badge">Hamiltonian</span>
+            <span class="step-op-title">Legendre Invariant $\\mathcal{H}$</span>
+          </div>
+          <div class="dag-formula-box" id="var-ham-math"></div>
+        </div>
+      `;
+    }
+
+    if (data.noether_conserved_quantities && data.noether_conserved_quantities.length > 0) {
+      html += `
+        <div class="assumptions-chip-box">
+          <div class="box-title"><i data-lucide="shield-check"></i> Noether Conserved Invariants:</div>
+          <div class="chips-flex">
+            ${data.noether_conserved_quantities.map(c => `<span class="assumption-badge">✔ ${c.symmetry} &implies; <strong>$${c.invariant_symbol}$ is Constant</strong></span>`).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    html += '</div></div>';
+    stage.innerHTML = html;
+
+    katex.render(`\\mathcal{L} = ${data.lagrangian_latex}`, document.getElementById('var-hero-lag'), { displayMode: true, throwOnError: false });
+    data.euler_lagrange_equations.forEach((eq, idx) => {
+      katex.render(eq.equation_latex, document.getElementById(`var-el-eq-${idx}`), { displayMode: true, throwOnError: false });
+      if (eq.acceleration_latex) {
+        katex.render(`\\ddot{${eq.coord}} = ${eq.acceleration_latex}`, document.getElementById(`var-accel-${idx}`), { displayMode: true, throwOnError: false });
+      }
+    });
+    if (data.hamiltonian) {
+      katex.render(`\\mathcal{H} = ${data.hamiltonian.hamiltonian_latex}`, document.getElementById('var-ham-math'), { displayMode: true, throwOnError: false });
+    }
+
+    lucide.createIcons();
+  } catch (e) {
+    stage.innerHTML = `<div class="canvas-empty-state"><p style="color: var(--plasma-crimson)">${e.message}</p></div>`;
+  }
+}
+
+function selectTensorMetric(metricKey) {
+  selectedTensorMetric = metricKey;
+  document.querySelectorAll('#view-tensors .reactor-mode').forEach(m => {
+    m.classList.toggle('active', m.getAttribute('data-metric') === metricKey);
+  });
+  executeTensorCurvature();
+}
+
+async function executeTensorCurvature() {
+  const emptyState = document.getElementById('tensor-empty-state');
+  const stage = document.getElementById('tensor-content-stage');
+
+  emptyState.classList.add('hidden');
+  stage.innerHTML = '<div class="canvas-loading-state"><div class="reactor-spinner"><div class="reactor-core"></div></div><div class="loading-label">Evaluating Riemann, Ricci & Einstein Spacetime Tensors...</div></div>';
+  stage.classList.remove('hidden');
+
+  try {
+    const res = await fetch('/api/tensors', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ metric: selectedTensorMetric })
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Failed');
+    const data = await res.json();
+
+    let html = `
+      <div class="derived-banner">
+        <div class="derived-banner-header">
+          <div class="verified-tag"><i data-lucide="disc"></i> ${data.is_vacuum_solution ? 'EINSTEIN VACUUM SOLUTION (G_{\\mu\\nu} = 0)' : 'CURVED SPACETIME METRIC'}</div>
+          <div class="tag-domain">${data.metric_name}</div>
+        </div>
+        <div class="math-hero" id="tensor-hero-metric"></div>
+      </div>
+      <div class="dag-container"><div class="dag-steps">
+        <div class="dag-node">
+          <div class="dag-node-header">
+            <span class="step-order-badge">Curvature</span>
+            <span class="step-op-title">Ricci Scalar Invariant $R$</span>
+          </div>
+          <div class="dag-formula-box" id="tensor-ricci-scalar"></div>
+        </div>
+        <div class="dag-node">
+          <div class="dag-node-header">
+            <span class="step-order-badge">Einstein Tensor</span>
+            <span class="step-op-title">Field Equation Tensor $G_{\\mu\\nu}$</span>
+          </div>
+          <div class="dag-formula-box" id="tensor-einstein-mat"></div>
+        </div>
+      </div></div>
+    `;
+
+    stage.innerHTML = html;
+    katex.render(`g_{\\mu\\nu} = ${data.metric_latex}`, document.getElementById('tensor-hero-metric'), { displayMode: true, throwOnError: false });
+    katex.render(`R = ${data.ricci_scalar_latex}`, document.getElementById('tensor-ricci-scalar'), { displayMode: true, throwOnError: false });
+    katex.render(`G_{\\mu\\nu} = ${data.einstein_tensor_latex}`, document.getElementById('tensor-einstein-mat'), { displayMode: true, throwOnError: false });
+
+    lucide.createIcons();
+  } catch (e) {
+    stage.innerHTML = `<div class="canvas-empty-state"><p style="color: var(--plasma-crimson)">${e.message}</p></div>`;
+  }
+}
+
 /* ================= EXPORT HELPERS ================= */
+async function downloadAcademicPaper() {
+  if (!currentDerivationResult) {
+    alert('Please execute a derivation first before generating an academic paper.');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/paper', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        target: currentDerivationResult.target_variable,
+        in_terms_of: currentDerivationResult.in_terms_of
+      })
+    });
+    if (!res.ok) throw new Error('Paper generation failed');
+    const data = await res.json();
+
+    const blob = new Blob([data.latex_source], { type: 'text/x-tex' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `paper_${data.target}.tex`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert(`Error: ${e.message}`);
+  }
+}
+
 function copyLatexProof() {
   if (!currentDerivationResult) return;
   const latex = `\\begin{align*}\n${currentDerivationResult.steps.map(s => `  & \\text{Step ${s.step_number}: ${s.operation}} \\\\\n  & ${s.latex} \\quad \\text{(${s.explanation})} \\\\[0.8em]`).join('\n')}\n\\end{align*}`;
@@ -733,3 +935,4 @@ function copyPythonProof() {
   const code = `import sympy as sp\n\n# Target: ${currentDerivationResult.target_variable}\n# Final Formula: ${currentDerivationResult.final_equation}\nprint("Derived:", "${currentDerivationResult.final_equation}")`;
   navigator.clipboard.writeText(code).then(() => alert('Python SymPy snippet copied to clipboard!'));
 }
+

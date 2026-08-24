@@ -77,6 +77,18 @@
           <div class="dock-active-indicator"></div>
         </button>
 
+        <button class="dock-item" data-view="variational" title="Lagrangian & Hamiltonian Variational Lab">
+          <div class="dock-icon-wrapper"><i data-lucide="orbit"></i></div>
+          <span class="dock-label">Variational</span>
+          <div class="dock-active-indicator"></div>
+        </button>
+
+        <button class="dock-item" data-view="tensors" title="General Relativity & Spacetime Tensor Curvature">
+          <div class="dock-icon-wrapper"><i data-lucide="disc"></i></div>
+          <span class="dock-label">Tensors</span>
+          <div class="dock-active-indicator"></div>
+        </button>
+
         <button class="dock-item" data-view="verifier" title="Multi-Layer Equation Verifier">
           <div class="dock-icon-wrapper"><i data-lucide="shield-check"></i></div>
           <span class="dock-label">Verifier</span>
@@ -474,6 +486,112 @@
         </div>
       </section>
 
+      <!-- ================= VIEW: VARIATIONAL MECHANICS LAB ================= -->
+      <section id="view-variational" class="view-panel">
+        <div class="view-split">
+          <div class="pod control-pod">
+            <div class="pod-header">
+              <div class="pod-title"><i data-lucide="orbit"></i> Variational Mechanics Lab</div>
+              <span class="pod-badge">Euler-Lagrange & Hamiltonian</span>
+            </div>
+
+            <div class="template-deck">
+              <div class="deck-label">Variational Presets:</div>
+              <div class="deck-chips-grid">
+                <button class="btn-sm-chip" onclick="loadVariationalPreset('pendulum')">Simple Pendulum $\mathcal{L} = \frac{1}{2}mL^2\dot{\theta}^2 - mgL(1-\cos\theta)$</button>
+                <button class="btn-sm-chip" onclick="loadVariationalPreset('harmonic')">Harmonic Oscillator $\mathcal{L} = \frac{1}{2}m\dot{x}^2 - \frac{1}{2}kx^2$</button>
+                <button class="btn-sm-chip" onclick="loadVariationalPreset('free_2d')">Free 2D Particle $\mathcal{L} = \frac{1}{2}m(\dot{x}^2 + \dot{y}^2)$ (Noether Invariants)</button>
+              </div>
+            </div>
+
+            <div class="field-block">
+              <label for="var-lagrangian-input"><i data-lucide="edit-3"></i> Lagrangian $\mathcal{L}(q, \dot{q}, t)$</label>
+              <input type="text" id="var-lagrangian-input" value="1/2 * m * L^2 * theta_dot^2 - m * g * L * (1 - cos(theta))">
+            </div>
+
+            <div class="field-block">
+              <label for="var-coords-input"><i data-lucide="list"></i> Generalized Coordinates $(q_1, q_2, \dots)$</label>
+              <input type="text" id="var-coords-input" value="theta">
+            </div>
+
+            <button id="btn-execute-variational" class="btn-execute" onclick="executeVariationalDerivation()">
+              <span class="btn-glow"></span>
+              <i data-lucide="sparkles"></i> Derive Equations of Motion & Symmetries
+            </button>
+          </div>
+
+          <div class="pod pipeline-pod">
+            <div class="pod-header">
+              <div class="pod-title"><i data-lucide="workflow"></i> Variational Equations of Motion</div>
+            </div>
+            <div id="var-results-stage" class="derive-stage">
+              <div class="canvas-empty-state" id="var-empty-state">
+                <div class="empty-glow-ring"><i data-lucide="orbit"></i></div>
+                <h3>Variational Mechanics Lab Ready</h3>
+                <p>Input a Lagrangian on the left or select a preset to compute Euler-Lagrange equations, conjugate momenta, Hamiltonian, and Noether invariants.</p>
+              </div>
+              <div id="var-content-stage" class="hidden"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= VIEW: TENSORS & GENERAL RELATIVITY ================= -->
+      <section id="view-tensors" class="view-panel">
+        <div class="view-split">
+          <div class="pod control-pod">
+            <div class="pod-header">
+              <div class="pod-title"><i data-lucide="disc"></i> General Relativity & Tensors</div>
+              <span class="pod-badge">Spacetime Curvature</span>
+            </div>
+
+            <div class="deck-label">Select Spacetime Metric:</div>
+            <div class="reactor-mode-selector">
+              <div class="reactor-mode active" data-metric="schwarzschild" onclick="selectTensorMetric('schwarzschild')">
+                <i data-lucide="disc"></i>
+                <div>
+                  <strong>Schwarzschild Black Hole Spacetime</strong>
+                  <small>Static, spherically symmetric vacuum metric ($G_{\mu\nu} = 0$)</small>
+                </div>
+              </div>
+              <div class="reactor-mode" data-metric="flrw" onclick="selectTensorMetric('flrw')">
+                <i data-lucide="maximize-2"></i>
+                <div>
+                  <strong>FLRW Expanding Cosmological Metric</strong>
+                  <small>Spatially homogeneous & isotropic expanding Universe ($a(t)$)</small>
+                </div>
+              </div>
+              <div class="reactor-mode" data-metric="minkowski" onclick="selectTensorMetric('minkowski')">
+                <i data-lucide="square"></i>
+                <div>
+                  <strong>Flat Minkowski Spacetime</strong>
+                  <small>Special relativistic flat spacetime metric $\eta_{\mu\nu}$</small>
+                </div>
+              </div>
+            </div>
+
+            <button id="btn-execute-tensors" class="btn-execute" onclick="executeTensorCurvature()">
+              <span class="btn-glow"></span>
+              <i data-lucide="cpu"></i> Compute Riemann, Ricci & Einstein Tensors
+            </button>
+          </div>
+
+          <div class="pod pipeline-pod">
+            <div class="pod-header">
+              <div class="pod-title"><i data-lucide="layers"></i> Spacetime Curvature Telemetry</div>
+            </div>
+            <div id="tensor-results-stage" class="derive-stage">
+              <div class="canvas-empty-state" id="tensor-empty-state">
+                <div class="empty-glow-ring"><i data-lucide="disc"></i></div>
+                <h3>Spacetime Tensor Engine Idle</h3>
+                <p>Select a spacetime metric on the left to compute exact Christoffel symbols, Riemann curvature tensor, Ricci scalar, and Geodesic equations of motion.</p>
+              </div>
+              <div id="tensor-content-stage" class="hidden"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ================= VIEW 6: PHYSICAL ONTOLOGY ================= -->
       <section id="view-ontology" class="view-panel">
         <div class="ontology-pod">
@@ -552,6 +670,7 @@
       <div class="sidecar-section">
         <div class="sidecar-label">Export Center:</div>
         <div class="export-buttons-stack">
+          <button class="btn-sidecar" onclick="downloadAcademicPaper()"><i data-lucide="download"></i> 1-Click LaTeX Paper (.tex)</button>
           <button class="btn-sidecar" onclick="copyLatexProof()"><i data-lucide="file-code"></i> Copy LaTeX Snippet</button>
           <button class="btn-sidecar" onclick="copyMarkdownProof()"><i data-lucide="file-text"></i> Copy Markdown Proof</button>
           <button class="btn-sidecar" onclick="copyPythonProof()"><i data-lucide="terminal"></i> Export SymPy Script</button>

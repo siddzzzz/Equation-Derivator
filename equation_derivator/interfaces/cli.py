@@ -215,6 +215,97 @@ def handle_quantities(args):
     console.print(table)
 
 
+def handle_lagrangian(args):
+    print_banner()
+    from equation_derivator.calculus.variational import VariationalEngine
+    engine = VariationalEngine()
+    coords = [c.strip() for c in args.coords.split(",") if c.strip()]
+
+    with console.status("[bold green]Solving Euler-Lagrange & Hamiltonian Mechanics..."):
+        try:
+            res = engine.derive(
+                lagrangian=args.lagrangian,
+                coordinates=coords,
+                system_name=args.name or "Variational System"
+            )
+        except Exception as e:
+            console.print(f"[bold red]Variational Error:[/bold red] {e}")
+            return
+
+    console.print(Markdown(res.to_markdown()))
+
+
+def handle_diff_eq(args):
+    print_banner()
+    from equation_derivator.calculus.differential import DifferentialEquationSolver
+    solver = DifferentialEquationSolver()
+
+    if args.type == "schrodinger":
+        res = solver.solve_quantum_infinite_well()
+    else:
+        res = solver.solve_damped_harmonic_oscillator(driving_force=args.driving)
+
+    console.print(Markdown(res.to_markdown()))
+
+
+def handle_tensor(args):
+    print_banner()
+    from equation_derivator.calculus.tensors import SpacetimeTensorEngine
+    engine = SpacetimeTensorEngine()
+
+    if args.metric == "schwarzschild":
+        res = engine.create_schwarzschild_metric()
+    elif args.metric == "flrw":
+        res = engine.create_flrw_metric()
+    else:
+        res = engine.create_minkowski_metric()
+
+    console.print(Markdown(res.to_markdown()))
+
+
+def handle_ask(args):
+    print_banner()
+    from equation_derivator.interfaces.nlp import PhysicsQueryDispatcher
+    dispatcher = PhysicsQueryDispatcher()
+
+    with console.status(f"[bold green]Processing physics query: '{args.query}'..."):
+        try:
+            res = dispatcher.process_query(args.query)
+        except Exception as e:
+            console.print(f"[bold red]Query Error:[/bold red] {e}")
+            return
+
+    console.print(Markdown(res.get("markdown", str(res))))
+
+
+def handle_paper(args):
+    print_banner()
+    from equation_derivator.derivation.engine import DerivationEngine
+    from equation_derivator.interfaces.paper_generator import ScientificPaperGenerator
+    
+    engine = DerivationEngine(GLOBAL_KNOWLEDGE_BASE)
+    target = args.target.strip()
+    in_terms_of = [s.strip() for s in args.in_terms_of.split(",") if s.strip()]
+    
+    try:
+        deriv = engine.derive(target_variable=target, in_terms_of=in_terms_of)
+        generator = ScientificPaperGenerator()
+        tex_code = generator.generate_derivation_paper(deriv.to_dict(), title=args.title)
+        
+        out_file = args.output or f"paper_{target}.tex"
+        with open(out_file, "w", encoding="utf-8") as f:
+            f.write(tex_code)
+            
+        console.print(Panel(
+            f"[bold green]Academic LaTeX Paper Successfully Generated![/bold green]\n"
+            f"[bold cyan]Saved to:[/bold cyan] {out_file}\n"
+            f"[dim]Compile with: pdflatex {out_file}[/dim]",
+            border_style="green"
+        ))
+    except Exception as e:
+        console.print(f"[bold red]Paper Generation Error:[/bold red] {e}")
+
+
 def handle_serve(args):
     print_banner()
     import uvicorn
@@ -244,6 +335,32 @@ def main():
     p_discover.add_argument("--target", "-t", default="Length", help="Target quantity or dimension")
     p_discover.add_argument("--cross-domain", "-cd", help="Comma-separated domains (e.g. 'Quantum,Relativity')")
 
+    # lagrangian
+    p_lag = subparsers.add_parser("lagrangian", help="Derive Euler-Lagrange, Hamiltonian & Noether invariants")
+    p_lag.add_argument("--lagrangian", "-l", required=True, help="Lagrangian formula (e.g. '1/2*m*x_dot^2 - 1/2*k*x^2')")
+    p_lag.add_argument("--coords", "-c", required=True, help="Comma-separated generalized coordinates (e.g. 'x' or 'th1,th2')")
+    p_lag.add_argument("--name", "-n", default="Physical System", help="System name")
+
+    # diff-eq
+    p_diff = subparsers.add_parser("diff-eq", help="Solve physical differential equations & eigenvalue problems")
+    p_diff.add_argument("--type", choices=["damped", "schrodinger"], default="damped", help="ODE type")
+    p_diff.add_argument("--driving", help="Driving force function F(t)")
+
+    # tensor
+    p_tens = subparsers.add_parser("tensor", help="Compute General Relativity spacetime curvature tensors")
+    p_tens.add_argument("--metric", choices=["schwarzschild", "flrw", "minkowski"], default="schwarzschild", help="Spacetime metric")
+
+    # ask
+    p_ask = subparsers.add_parser("ask", help="Natural language physics query dispatcher")
+    p_ask.add_argument("--query", "-q", required=True, help="Natural language physics question")
+
+    # paper
+    p_paper = subparsers.add_parser("paper", help="Generate academic LaTeX paper (.tex)")
+    p_paper.add_argument("--target", "-t", required=True, help="Target variable (e.g. K)")
+    p_paper.add_argument("--in-terms-of", "-i", required=True, help="Allowed variables (e.g. p,m)")
+    p_paper.add_argument("--title", help="Paper title")
+    p_paper.add_argument("--output", "-o", help="Output .tex file path")
+
     # browse
     p_browse = subparsers.add_parser("browse", help="Browse catalog of equations")
     p_browse.add_argument("--domain", "-d", help="Filter by domain")
@@ -264,6 +381,16 @@ def main():
         handle_verify(args)
     elif args.command == "discover":
         handle_discover(args)
+    elif args.command == "lagrangian":
+        handle_lagrangian(args)
+    elif args.command == "diff-eq":
+        handle_diff_eq(args)
+    elif args.command == "tensor":
+        handle_tensor(args)
+    elif args.command == "ask":
+        handle_ask(args)
+    elif args.command == "paper":
+        handle_paper(args)
     elif args.command == "browse":
         handle_browse(args)
     elif args.command == "quantities":

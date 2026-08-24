@@ -172,3 +172,11 @@ class VariableContext:
             return func_dim * dx_dim
 
         return Dimension()
+
+
+def parse_expression_safely(expr_str: str, context: Optional[VariableContext] = None) -> sp.Expr:
+    """
+    Convenience function to safely parse a string into a SymPy expression using a VariableContext.
+    """
+    ctx = context or VariableContext()
+    return ctx.parse(expr_str)
