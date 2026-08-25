@@ -4,11 +4,11 @@ FastAPI REST API & Web Application Backend.
 
 from __future__ import annotations
 import os
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from equation_derivator.knowledge.database import GLOBAL_KNOWLEDGE_BASE
 import equation_derivator.knowledge.domains
@@ -103,23 +103,39 @@ class PhaseSpaceRequest(BaseModel):
 
 
 class QuantumWaveRequest(BaseModel):
-    barrier_type: Optional[str] = "barrier"  # "barrier", "harmonic", "step"
+    barrier_type: Optional[str] = "barrier"  # "barrier", "harmonic", "step", "custom"
     barrier_height: Optional[float] = 4.0
     barrier_width: Optional[float] = 0.5
     barrier_center: Optional[float] = 0.0
+    custom_potential_expr: Optional[str] = None
     p0: Optional[float] = 3.0
     sigma: Optional[float] = 0.5
+    x_min: Optional[float] = -8.0
+    x_max: Optional[float] = 8.0
 
 
 class RelativityOrbitRequest(BaseModel):
     mode: Optional[str] = "particle"  # "particle" or "photon"
+    M: Optional[float] = 1.0
     r0: Optional[float] = 12.0
     v_phi0: Optional[float] = 0.28
+    v_r0: Optional[float] = 0.0
     impact_parameter_b: Optional[float] = 6.0
 
 
 class QFTRequest(BaseModel):
     representation: Optional[str] = "dirac"  # "dirac", "weyl", "majorana"
+
+
+class CustomQFTRequest(BaseModel):
+    mode: Optional[str] = "gamma_trace"  # "gamma_trace" or "dirac_hamiltonian"
+    expression: Optional[str] = "gamma0 * gamma1 * gamma0 * gamma1"
+    compute_trace: Optional[bool] = True
+    representation: Optional[str] = "dirac"
+    mass: Optional[float] = 0.511
+    px: Optional[float] = 1.0
+    py: Optional[float] = 0.0
+    pz: Optional[float] = 0.0
 
 
 class FeynmanRequest(BaseModel):
@@ -130,9 +146,27 @@ class SymmetryRequest(BaseModel):
     mode: Optional[str] = "su2"  # "su2", "su3", "yang_mills", "higgs"
 
 
+class CustomSymmetryRequest(BaseModel):
+    generators: Any
+    algebra_name: Optional[str] = "Custom Lie Algebra"
+
+
+class CustomFormRequest(BaseModel):
+    operation: str = "d"  # "d", "star", "wedge", "field_strength"
+    form1: str
+    coordinates: Optional[List[str]] = None
+    form2: Optional[str] = None
+    metric_signature: Optional[List[int]] = None
+
+
 class StatMechRequest(BaseModel):
     mode: Optional[str] = "ideal_gas"  # "ideal_gas", "quantum_oscillator", "distributions", "custom"
     partition_function: Optional[str] = None
+    model_name: Optional[str] = "Custom Statistical Ensemble"
+
+
+class CustomStatMechRequest(BaseModel):
+    partition_function: str
     model_name: Optional[str] = "Custom Statistical Ensemble"
 
 
@@ -346,7 +380,9 @@ def phase_portrait_endpoint(req: PhaseSpaceRequest):
 @app.post("/api/sim/quantum-wave")
 def quantum_wave_endpoint(req: QuantumWaveRequest):
     from equation_derivator.simulation.quantum_sim import QuantumWavePacketSim
-    sim = QuantumWavePacketSim(N=256, x_min=-8.0, x_max=8.0)
+    x_min = req.x_min if req.x_min is not None else -8.0
+    x_max = req.x_max if req.x_max is not None else 8.0
+    sim = QuantumWavePacketSim(N=256, x_min=x_min, x_max=x_max)
     try:
         psi0 = sim.create_gaussian_packet(
             x0=-3.0,
@@ -357,7 +393,8 @@ def quantum_wave_endpoint(req: QuantumWaveRequest):
             barrier_type=req.barrier_type or "barrier",
             barrier_height=req.barrier_height if req.barrier_height is not None else 4.0,
             barrier_width=req.barrier_width or 0.5,
-            barrier_center=req.barrier_center or 0.0
+            barrier_center=req.barrier_center or 0.0,
+            custom_potential_expr=req.custom_potential_expr
         )
         res = sim.propagate(psi0, V, t_max=1.5, dt=0.01, n_frames=25)
         return res.to_dict()
@@ -368,7 +405,8 @@ def quantum_wave_endpoint(req: QuantumWaveRequest):
 @app.post("/api/sim/relativity-orbit")
 def relativity_orbit_endpoint(req: RelativityOrbitRequest):
     from equation_derivator.simulation.relativity_sim import RelativisticOrbitSim
-    sim = RelativisticOrbitSim(M=1.0, G=1.0, c=1.0)
+    M_val = req.M if req.M is not None else 1.0
+    sim = RelativisticOrbitSim(M=M_val, G=1.0, c=1.0)
     try:
         if req.mode == "photon":
             res = sim.simulate_photon_deflection(
@@ -379,7 +417,8 @@ def relativity_orbit_endpoint(req: RelativityOrbitRequest):
         else:
             res = sim.simulate_particle_orbit(
                 r0=req.r0 or 12.0,
-                v_phi0=req.v_phi0 or 0.28
+                v_phi0=req.v_phi0 or 0.28,
+                v_r0=req.v_r0 or 0.0
             )
         return res.to_dict()
     except Exception as e:
@@ -391,6 +430,28 @@ def qft_dirac_endpoint(req: QFTRequest):
     from equation_derivator.qft.dirac import evaluate_dirac_equation
     try:
         res = evaluate_dirac_equation(representation=req.representation or "dirac")
+        return res.to_dict()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/qft/custom")
+def qft_custom_endpoint(req: CustomQFTRequest):
+    from equation_derivator.qft.custom_qft import CustomQFTEngine
+    engine = CustomQFTEngine(representation=req.representation or "dirac")
+    try:
+        if req.mode == "dirac_hamiltonian":
+            res = engine.evaluate_dirac_hamiltonian(
+                mass=req.mass if req.mass is not None else 0.511,
+                px=req.px if req.px is not None else 1.0,
+                py=req.py if req.py is not None else 0.0,
+                pz=req.pz if req.pz is not None else 0.0,
+            )
+        else:
+            res = engine.evaluate_gamma_expression(
+                expression_str=req.expression or "gamma0 * gamma1 * gamma0 * gamma1",
+                compute_trace=req.compute_trace if req.compute_trace is not None else True
+            )
         return res.to_dict()
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -423,6 +484,23 @@ def geometry_maxwell_endpoint():
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.post("/api/geometry/custom-form")
+def geometry_custom_form_endpoint(req: CustomFormRequest):
+    from equation_derivator.geometry.custom_forms import CustomExteriorCalculusEngine
+    engine = CustomExteriorCalculusEngine()
+    try:
+        res = engine.evaluate_operation(
+            operation=req.operation or "d",
+            form1_str=req.form1,
+            coordinates=req.coordinates,
+            form2_str=req.form2,
+            metric_signature=req.metric_signature
+        )
+        return res.to_dict()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @app.post("/api/symmetry/eval")
 def symmetry_endpoint(req: SymmetryRequest):
     from equation_derivator.symmetry.lie_algebra import SU2Algebra, SU3Algebra
@@ -441,6 +519,20 @@ def symmetry_endpoint(req: SymmetryRequest):
         else:
             res = YangMillsGaugeEngine().evaluate_yang_mills("SU(2)")
             return res.to_dict()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/symmetry/custom")
+def symmetry_custom_endpoint(req: CustomSymmetryRequest):
+    from equation_derivator.symmetry.custom_algebra import CustomLieAlgebraEngine
+    engine = CustomLieAlgebraEngine()
+    try:
+        res = engine.evaluate_custom_algebra(
+            generators_input=req.generators,
+            algebra_name=req.algebra_name or "Custom Lie Algebra"
+        )
+        return res.to_dict()
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -467,6 +559,20 @@ def statmech_endpoint(req: StatMechRequest):
         else:
             res = engine.evaluate_ideal_gas()
             return res.to_dict()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/statmech/custom")
+def statmech_custom_endpoint(req: CustomStatMechRequest):
+    from equation_derivator.statmech.partition import PartitionFunctionEngine
+    engine = PartitionFunctionEngine()
+    try:
+        res = engine.derive_from_Z(
+            Z_expr=req.partition_function,
+            model_name=req.model_name or "Custom Statistical Ensemble"
+        )
+        return res.to_dict()
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

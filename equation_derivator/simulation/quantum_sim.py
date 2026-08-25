@@ -83,8 +83,23 @@ class QuantumWavePacketSim:
         barrier_type: str = "barrier",
         barrier_height: float = 5.0,
         barrier_width: float = 0.5,
-        barrier_center: float = 0.0
+        barrier_center: float = 0.0,
+        custom_potential_expr: Optional[str] = None
     ) -> np.ndarray:
+        if custom_potential_expr and custom_potential_expr.strip():
+            from equation_derivator.core.symbols import parse_expression_safely
+            try:
+                sym_expr = parse_expression_safely(custom_potential_expr)
+                x_sym = [s for s in sym_expr.free_symbols if s.name == "x"]
+                target_sym = x_sym[0] if x_sym else sp.Symbol("x", real=True)
+                f_lamb = sp.lambdify(target_sym, sym_expr, modules=["numpy"])
+                V = np.array(f_lamb(self.x), dtype=float)
+                if V.ndim == 0:
+                    V = np.full(self.N, float(V))
+                return V
+            except Exception:
+                pass
+
         V = np.zeros(self.N)
         if barrier_type == "barrier":
             # Rectangular potential barrier

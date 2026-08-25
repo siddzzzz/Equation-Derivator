@@ -90,27 +90,39 @@ Open [http://localhost:8000](http://localhost:8000) to access the obsidian dark-
 ```bash
 # Simulate nonlinear pendulum with RK4
 python -m equation_derivator.interfaces.cli sim --accel "-9.81*sin(theta)" --coords "theta" --q0 "1.5" --v0 "0.0" --t-end 5.0
+
+# Simulate custom chaotic Duffing oscillator
+python -m equation_derivator.interfaces.cli sim --accel "-0.2*v - 1.0*x - 1.0*x^3 + 2.0*cos(1.2*t)" --coords "x" --q0 "1.0" --v0 "0.0"
 ```
 
 #### **Quantum Field Theory & Dirac Spinors**
 ```bash
-# Evaluate Dirac gamma algebra & chiral projectors
-python -m equation_derivator.interfaces.cli qft --representation dirac
+# Evaluate custom product & exact trace of Dirac gamma matrices
+python -m equation_derivator.interfaces.cli qft --custom "gamma0 * gamma1 * gamma0 * gamma1"
+
+# Relativistic Dirac Hamiltonian dispersion for custom mass and momentum vector
+python -m equation_derivator.interfaces.cli qft --dirac-hamiltonian --mass 0.511 --momentum "1.0, 0.0, 0.0"
 
 # Evaluate electron-positron annihilation amplitude & cross section
 python -m equation_derivator.interfaces.cli qft --process ee_to_mumu
 ```
 
-#### **Differential Forms & Geometric Electrodynamics**
+#### **Differential Forms & Geometric Exterior Calculus**
 ```bash
-# Derive coordinate-free geometric Maxwell equations
+# Evaluate exterior derivative d(y dx - x dy + z dz)
+python -m equation_derivator.interfaces.cli forms --custom "y*dx - x*dy + z*dz" --coords "x,y,z" --op d
+
+# Evaluate wedge product between custom differential forms
+python -m equation_derivator.interfaces.cli forms --custom "x*dx + y*dy" --coords "x,y,z" --op wedge --form2 "z*dz"
+
+# Derive coordinate-free geometric Maxwell equations dF = 0, d*F = mu_0 *J
 python -m equation_derivator.interfaces.cli forms
 ```
 
-#### **Lie Algebras & Gauge Symmetries**
+#### **Lie Algebras & Custom Matrix Symmetries**
 ```bash
-# Evaluate SU(2) Pauli algebra & Casimir invariant
-python -m equation_derivator.interfaces.cli symmetry --group su2
+# Evaluate custom Lie algebra generators with mutual commutators, Jacobi identity & Casimir invariant
+python -m equation_derivator.interfaces.cli symmetry --custom-matrices "[[0, 1/2], [1/2, 0]]; [[0, -I/2], [I/2, 0]]; [[1/2, 0], [0, -1/2]]" --name "SU(2) Spin"
 
 # Evaluate SU(3) Gell-Mann color algebra for QCD
 python -m equation_derivator.interfaces.cli symmetry --group su3
@@ -119,16 +131,16 @@ python -m equation_derivator.interfaces.cli symmetry --group su3
 python -m equation_derivator.interfaces.cli symmetry --group higgs
 ```
 
-#### **Statistical Mechanics & Partition Functions**
+#### **Statistical Mechanics & Custom Partition Functions**
 ```bash
+# Deduce all thermodynamic potentials (F, S, U, P, Cv, M, mu) from any custom partition function Z
+python -m equation_derivator.interfaces.cli statmech --partition "2*cosh(mu_B*B / (k_B*T))^N" --name "Paramagnet in Magnetic Field"
+
 # Derive Sackur-Tetrode equation of state for Ideal Gas
 python -m equation_derivator.interfaces.cli statmech --model ideal_gas
 
 # Derive Einstein heat capacity for Quantum Harmonic Oscillator
 python -m equation_derivator.interfaces.cli statmech --model quantum_oscillator
-
-# Universal Bose-Einstein, Fermi-Dirac, and Planck Blackbody Law
-python -m equation_derivator.interfaces.cli statmech --model distributions
 ```
 
 #### **Variational Mechanics (Euler-Lagrange & Hamiltonian)**

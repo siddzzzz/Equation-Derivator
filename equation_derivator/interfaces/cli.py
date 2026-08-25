@@ -346,7 +346,21 @@ def handle_sim(args):
 
 def handle_qft(args):
     print_banner()
-    if args.representation:
+    if args.custom:
+        from equation_derivator.qft.custom_qft import CustomQFTEngine
+        engine = CustomQFTEngine(representation=args.representation or "dirac")
+        res = engine.evaluate_gamma_expression(args.custom)
+        console.print(Markdown(res.markdown))
+    elif args.dirac_hamiltonian:
+        from equation_derivator.qft.custom_qft import CustomQFTEngine
+        engine = CustomQFTEngine(representation=args.representation or "dirac")
+        p_vals = [float(x.strip()) for x in args.momentum.split(",") if x.strip()]
+        px = p_vals[0] if len(p_vals) > 0 else 1.0
+        py = p_vals[1] if len(p_vals) > 1 else 0.0
+        pz = p_vals[2] if len(p_vals) > 2 else 0.0
+        res = engine.evaluate_dirac_hamiltonian(mass=args.mass, px=px, py=py, pz=pz)
+        console.print(Markdown(res.markdown))
+    elif args.representation:
         from equation_derivator.qft.dirac import evaluate_dirac_equation
         res = evaluate_dirac_equation(representation=args.representation)
         console.print(Markdown(res.markdown))
@@ -358,31 +372,49 @@ def handle_qft(args):
 
 def handle_forms(args):
     print_banner()
-    from equation_derivator.geometry.maxwell_forms import GeometricMaxwellEngine
-    engine = GeometricMaxwellEngine()
-    res = engine.build_electrodynamics()
-    console.print(Markdown(res.markdown))
+    if args.custom:
+        from equation_derivator.geometry.custom_forms import CustomExteriorCalculusEngine
+        coords = [c.strip() for c in args.coords.split(",") if c.strip()]
+        engine = CustomExteriorCalculusEngine()
+        res = engine.evaluate_operation(
+            operation=args.op or "d",
+            form1_str=args.custom,
+            coordinates=coords,
+            form2_str=args.form2
+        )
+        console.print(Markdown(res.markdown))
+    else:
+        from equation_derivator.geometry.maxwell_forms import GeometricMaxwellEngine
+        engine = GeometricMaxwellEngine()
+        res = engine.build_electrodynamics()
+        console.print(Markdown(res.markdown))
 
 
 def handle_symmetry(args):
     print_banner()
-    mode = args.group.lower()
-    if mode == "su2":
-        from equation_derivator.symmetry.lie_algebra import SU2Algebra
-        res = SU2Algebra().evaluate()
-        console.print(Markdown(res.markdown))
-    elif mode == "su3":
-        from equation_derivator.symmetry.lie_algebra import SU3Algebra
-        res = SU3Algebra().evaluate()
-        console.print(Markdown(res.markdown))
-    elif mode == "higgs":
-        from equation_derivator.symmetry.gauge import HiggsMechanismEngine
-        res = HiggsMechanismEngine().evaluate_electroweak_breaking()
+    if args.custom_matrices:
+        from equation_derivator.symmetry.custom_algebra import CustomLieAlgebraEngine
+        engine = CustomLieAlgebraEngine()
+        res = engine.evaluate_custom_algebra(args.custom_matrices, algebra_name=args.name or "Custom Lie Algebra")
         console.print(Markdown(res.markdown))
     else:
-        from equation_derivator.symmetry.gauge import YangMillsGaugeEngine
-        res = YangMillsGaugeEngine().evaluate_yang_mills("SU(2)")
-        console.print(Markdown(res.markdown))
+        mode = args.group.lower()
+        if mode == "su2":
+            from equation_derivator.symmetry.lie_algebra import SU2Algebra
+            res = SU2Algebra().evaluate()
+            console.print(Markdown(res.markdown))
+        elif mode == "su3":
+            from equation_derivator.symmetry.lie_algebra import SU3Algebra
+            res = SU3Algebra().evaluate()
+            console.print(Markdown(res.markdown))
+        elif mode == "higgs":
+            from equation_derivator.symmetry.gauge import HiggsMechanismEngine
+            res = HiggsMechanismEngine().evaluate_electroweak_breaking()
+            console.print(Markdown(res.markdown))
+        else:
+            from equation_derivator.symmetry.gauge import YangMillsGaugeEngine
+            res = YangMillsGaugeEngine().evaluate_yang_mills("SU(2)")
+            console.print(Markdown(res.markdown))
 
 
 def handle_statmech(args):
@@ -390,7 +422,10 @@ def handle_statmech(args):
     from equation_derivator.statmech.partition import PartitionFunctionEngine
     from equation_derivator.statmech.distributions import QuantumDistributionEngine
     engine = PartitionFunctionEngine()
-    if args.model == "ideal_gas":
+    if args.partition:
+        res = engine.derive_from_Z(args.partition, model_name=args.name or "Custom Ensemble")
+        console.print(Markdown(res.markdown))
+    elif args.model == "ideal_gas":
         res = engine.evaluate_ideal_gas()
         console.print(Markdown(res.markdown))
     elif args.model == "quantum_oscillator":
@@ -398,9 +433,6 @@ def handle_statmech(args):
         console.print(Markdown(res.markdown))
     elif args.model == "distributions":
         res = QuantumDistributionEngine().evaluate_distributions()
-        console.print(Markdown(res.markdown))
-    elif args.partition:
-        res = engine.derive_from_Z(args.partition, model_name=args.name or "Custom Ensemble")
         console.print(Markdown(res.markdown))
 
 
@@ -460,20 +492,30 @@ def main():
 
     # qft
     p_qft = subparsers.add_parser("qft", help="Evaluate Dirac spinors, gamma matrices, and Feynman QED scattering")
+    p_qft.add_argument("--custom", "-c", help="Custom Dirac gamma expression (e.g. 'gamma0*gamma1*gamma0*gamma1')")
+    p_qft.add_argument("--dirac-hamiltonian", "-dh", action="store_true", help="Evaluate Dirac Hamiltonian dispersion")
+    p_qft.add_argument("--mass", type=float, default=0.511, help="Fermion rest mass (MeV/c^2 or kg)")
+    p_qft.add_argument("--momentum", default="1.0,0.0,0.0", help="Spatial momentum vector px,py,pz")
     p_qft.add_argument("--representation", "-r", choices=["dirac", "weyl", "majorana"], help="Dirac matrix representation")
     p_qft.add_argument("--process", "-p", choices=["ee_to_mumu", "compton"], default="ee_to_mumu", help="QED scattering process")
 
     # forms
-    p_forms = subparsers.add_parser("forms", help="Evaluate differential forms and geometric Maxwell electrodynamics")
+    p_forms = subparsers.add_parser("forms", help="Evaluate differential forms and exterior calculus")
+    p_forms.add_argument("--custom", "-c", help="Custom differential form expression (e.g. 'y*dx - x*dy + z*dz')")
+    p_forms.add_argument("--coords", default="x,y,z", help="Comma-separated coordinates")
+    p_forms.add_argument("--op", choices=["d", "star", "wedge", "field_strength"], default="d", help="Exterior calculus operation")
+    p_forms.add_argument("--form2", help="Second differential form for wedge product")
 
     # symmetry
     p_sym = subparsers.add_parser("symmetry", help="Evaluate Lie algebras, Yang-Mills fields, and Higgs mechanism")
+    p_sym.add_argument("--custom-matrices", "-cm", help="Custom generator matrices semicolon-separated (e.g. '[[0,1],[1,0]];[[0,-I],[I,0]]')")
     p_sym.add_argument("--group", "-g", choices=["su2", "su3", "yang_mills", "higgs"], default="su2", help="Symmetry group / model")
+    p_sym.add_argument("--name", default="Custom Lie Algebra", help="Algebra title")
 
     # statmech
     p_stat = subparsers.add_parser("statmech", help="Derive thermodynamic potentials from partition functions")
-    p_stat.add_argument("--model", "-m", choices=["ideal_gas", "quantum_oscillator", "distributions"], default="ideal_gas", help="Ensemble model")
-    p_stat.add_argument("--partition", "-z", help="Custom partition function Z(T, V, N)")
+    p_stat.add_argument("--partition", "-z", help="Custom partition function Z(T, V, N, B, ...)")
+    p_stat.add_argument("--model", "-m", choices=["ideal_gas", "quantum_oscillator", "distributions"], help="Ensemble model")
     p_stat.add_argument("--name", default="Custom Statistical Ensemble", help="Model name")
 
     # ask

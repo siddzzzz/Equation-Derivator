@@ -627,43 +627,95 @@
         <div class="view-split">
           <div class="pod control-pod">
             <div class="pod-header">
-              <div class="pod-title"><i data-lucide="play-circle"></i> Numerical Physics Simulator</div>
+              <div class="pod-title"><i data-lucide="play-circle"></i> Numerical Physics Simulation Studio</div>
               <span class="pod-badge">RK4 / TDSE / Orbits</span>
             </div>
 
             <div class="template-deck">
-              <div class="deck-label">Simulation Presets:</div>
+              <div class="deck-label">Quick Preset Templates (Autofills Custom Inputs):</div>
               <div class="deck-chips-grid">
-                <button class="btn-sm-chip" onclick="loadSimPreset('pendulum')">Nonlinear Pendulum (RK4)</button>
-                <button class="btn-sm-chip" onclick="loadSimPreset('harmonic')">Harmonic Oscillator Phase Space</button>
-                <button class="btn-sm-chip" onclick="loadSimPreset('quantum')">Quantum Tunneling Wave Packet</button>
-                <button class="btn-sm-chip" onclick="loadSimPreset('orbit')">Schwarzschild Black Hole Orbit</button>
+                <button class="btn-sm-chip" onclick="loadSimPreset('pendulum')">Nonlinear Pendulum</button>
+                <button class="btn-sm-chip" onclick="loadSimPreset('harmonic')">Harmonic Phase Space</button>
+                <button class="btn-sm-chip" onclick="loadSimPreset('duffing')">Duffing Chaos Oscillator</button>
+                <button class="btn-sm-chip" onclick="loadSimPreset('quantum_barrier')">Quantum Barrier Tunneling</button>
+                <button class="btn-sm-chip" onclick="loadSimPreset('quantum_well')">Quantum Harmonic Trap</button>
+                <button class="btn-sm-chip" onclick="loadSimPreset('orbit_bound')">Relativistic Precessing Orbit</button>
+                <button class="btn-sm-chip" onclick="loadSimPreset('orbit_photon')">Black Hole Light Deflection</button>
               </div>
             </div>
 
-            <div id="sim-controls-form">
+            <div class="field-block">
+              <label><i data-lucide="layers"></i> Simulation Mode</label>
+              <select id="sim-mode-select" onchange="onSimModeChange()">
+                <option value="phase_portrait">1. Custom Classical Dynamics & Phase Portrait (RK4)</option>
+                <option value="quantum">2. Custom Quantum Wave Packet Potential V(x) (TDSE FFT)</option>
+                <option value="relativity">3. Custom Relativistic Geodesic / Orbit (Schwarzschild)</option>
+              </select>
+            </div>
+
+            <!-- Block 1: Classical Dynamics -->
+            <div id="sim-block-classical">
               <div class="field-block">
-                <label><i data-lucide="edit-3"></i> Acceleration $\ddot{q}(t)$</label>
-                <input type="text" id="sim-accel-input" value="-9.81 * sin(theta)">
+                <label><i data-lucide="edit-3"></i> Symbolic Acceleration Expression $\ddot{q}(t, q, \dot{q})$</label>
+                <input type="text" id="sim-accel-input" value="-9.81 * sin(theta)" placeholder="e.g. -9.81*sin(theta) or -4*x - 0.2*v + 2*cos(t)">
+              </div>
+              <div class="field-row">
+                <div class="field-block">
+                  <label><i data-lucide="sliders"></i> Initial Position $q(0)$</label>
+                  <input type="number" id="sim-q0-input" value="1.5" step="0.1">
+                </div>
+                <div class="field-block">
+                  <label><i data-lucide="sliders"></i> Initial Velocity $\dot{q}(0)$</label>
+                  <input type="number" id="sim-v0-input" value="0.0" step="0.1">
+                </div>
+              </div>
+            </div>
+
+            <!-- Block 2: Quantum Potential -->
+            <div id="sim-block-quantum" class="hidden">
+              <div class="field-block">
+                <label><i data-lucide="zap"></i> Custom Quantum Potential $V(x)$</label>
+                <input type="text" id="sim-quantum-potential-input" value="4.0 * (abs(x) < 0.5)" placeholder="e.g. 0.5 * x^2 or 4.0 / cosh(x)^2 or x^4 - 2*x^2">
+              </div>
+              <div class="field-row">
+                <div class="field-block">
+                  <label><i data-lucide="sliders"></i> Wave Packet Momentum $p_0$</label>
+                  <input type="number" id="sim-quantum-p0" value="3.0" step="0.5">
+                </div>
+                <div class="field-block">
+                  <label><i data-lucide="sliders"></i> Wave Packet Width $\sigma$</label>
+                  <input type="number" id="sim-quantum-sigma" value="0.5" step="0.1">
+                </div>
+              </div>
+            </div>
+
+            <!-- Block 3: Relativistic Orbit -->
+            <div id="sim-block-relativity" class="hidden">
+              <div class="field-row">
+                <div class="field-block">
+                  <label><i data-lucide="sun"></i> Central Mass $M$</label>
+                  <input type="number" id="sim-rel-M" value="1.0" step="0.1">
+                </div>
+                <div class="field-block">
+                  <label><i data-lucide="sliders"></i> Initial Radius $r_0$</label>
+                  <input type="number" id="sim-rel-r0" value="12.0" step="0.5">
+                </div>
               </div>
               <div class="field-block">
-                <label><i data-lucide="sliders"></i> Initial Position $q(0)$ & Velocity $\dot{q}(0)$</label>
-                <div style="display: flex; gap: 0.5rem;">
-                  <input type="number" id="sim-q0-input" value="1.5" step="0.1" placeholder="q(0)">
-                  <input type="number" id="sim-v0-input" value="0.0" step="0.1" placeholder="v(0)">
-                </div>
+                <label><i data-lucide="compass"></i> Angular Velocity $v_{\phi,0}$ (or Photon Impact $b$)</label>
+                <input type="number" id="sim-rel-vphi" value="0.28" step="0.02">
               </div>
             </div>
 
             <button id="btn-run-simulation" class="btn-execute" onclick="executeSimulation()">
               <span class="btn-glow"></span>
-              <i data-lucide="play"></i> Run Numerical Simulation & Phase Portrait
+              <i data-lucide="play"></i> Integrate & Render 60fps Physics Canvas
             </button>
           </div>
 
           <div class="pod pipeline-pod">
             <div class="pod-header">
-              <div class="pod-title"><i data-lucide="activity"></i> Interactive Simulation Canvas</div>
+              <div class="pod-title"><i data-lucide="activity"></i> Interactive Simulation Canvas & Streamlines</div>
               <div style="display: flex; gap: 0.5rem;">
                 <button class="btn-sm-chip" id="btn-sim-play-pause" onclick="toggleSimPlayPause()"><i data-lucide="pause"></i> Pause</button>
                 <button class="btn-sm-chip" onclick="resetSimCanvas()"><i data-lucide="rotate-ccw"></i> Reset</button>
@@ -672,9 +724,9 @@
             <div class="derive-stage" style="padding: 1rem; display: flex; flex-direction: column; gap: 1rem;">
               <canvas id="sim-canvas" width="600" height="340" style="background: rgba(6, 9, 18, 0.9); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); width: 100%; height: 320px;"></canvas>
               <div id="sim-telemetry-hud" style="display: flex; gap: 1rem; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-secondary);">
-                <span>Time: <strong id="sim-hud-time" style="color: var(--plasma-cyan);">0.00s</strong></span>
-                <span>Coordinate: <strong id="sim-hud-pos" style="color: var(--plasma-violet);">0.00</strong></span>
-                <span>Velocity: <strong id="sim-hud-vel" style="color: var(--plasma-amber);">0.00</strong></span>
+                <span>Telemetry: <strong id="sim-hud-time" style="color: var(--plasma-cyan);">0.00s</strong></span>
+                <span>State $q$: <strong id="sim-hud-pos" style="color: var(--plasma-violet);">0.00</strong></span>
+                <span>State $\dot{q}$: <strong id="sim-hud-vel" style="color: var(--plasma-amber);">0.00</strong></span>
               </div>
             </div>
           </div>
@@ -686,50 +738,75 @@
         <div class="view-split">
           <div class="pod control-pod">
             <div class="pod-header">
-              <div class="pod-title"><i data-lucide="sparkles"></i> Quantum Field Theory & Dirac</div>
-              <span class="pod-badge">Scattering & Spinors</span>
+              <div class="pod-title"><i data-lucide="sparkles"></i> Custom QFT & Dirac Studio</div>
+              <span class="pod-badge">Traces / Spinors / Graphs</span>
             </div>
 
-            <div class="deck-label">Select QFT Scattering Process:</div>
-            <div class="reactor-mode-selector">
-              <div class="reactor-mode active" data-qft="ee_to_mumu" onclick="selectQFTProcess('ee_to_mumu')">
-                <i data-lucide="sparkles"></i>
-                <div>
-                  <strong>$e^- e^+ \to \mu^- \mu^+$ Annihilation</strong>
-                  <small>s-channel tree-level photon exchange</small>
+            <div class="template-deck">
+              <div class="deck-label">Autofill Templates:</div>
+              <div class="deck-chips-grid">
+                <button class="btn-sm-chip" onclick="loadQFTPreset('trace_4g')">$\operatorname{Tr}(\gamma^0\gamma^1\gamma^0\gamma^1)$</button>
+                <button class="btn-sm-chip" onclick="loadQFTPreset('trace_g5')">$\operatorname{Tr}(\gamma^5\gamma^0\gamma^1\gamma^2\gamma^3)$</button>
+                <button class="btn-sm-chip" onclick="loadQFTPreset('dirac_hamiltonian')">Dirac Hamiltonian ($e^-$ at 1 GeV)</button>
+                <button class="btn-sm-chip" onclick="loadQFTPreset('ee_to_mumu')">$e^-e^+ \to \mu^-\mu^+$ Cross Section</button>
+                <button class="btn-sm-chip" onclick="loadQFTPreset('compton')">Compton Scattering</button>
+              </div>
+            </div>
+
+            <div class="field-block">
+              <label><i data-lucide="layers"></i> Calculation Type</label>
+              <select id="qft-mode-select" onchange="onQFTModeChange()">
+                <option value="custom_trace">1. Custom Gamma Matrix Product & Trace Identity</option>
+                <option value="dirac_hamiltonian">2. Relativistic Dirac Hamiltonian ($H = \boldsymbol{\alpha}\cdot\mathbf{p} + \beta m$)</option>
+                <option value="scattering">3. Tree-Level QED Scattering Amplitude & Vector SVG Graph</option>
+              </select>
+            </div>
+
+            <div id="qft-block-trace">
+              <div class="field-block">
+                <label><i data-lucide="edit-3"></i> Custom Dirac Gamma Matrix Expression</label>
+                <input type="text" id="qft-custom-expr" value="gamma0 * gamma1 * gamma0 * gamma1" placeholder="e.g. gamma0 * gamma1 * gamma0 * gamma1 or gamma5 * gamma0">
+              </div>
+            </div>
+
+            <div id="qft-block-hamiltonian" class="hidden">
+              <div class="field-row">
+                <div class="field-block">
+                  <label><i data-lucide="sliders"></i> Fermion Mass $m$</label>
+                  <input type="number" id="qft-mass-input" value="0.511" step="0.01">
+                </div>
+                <div class="field-block">
+                  <label><i data-lucide="navigation"></i> Momentum $(p_x, p_y, p_z)$</label>
+                  <input type="text" id="qft-momentum-input" value="1.0, 0.0, 0.0">
                 </div>
               </div>
-              <div class="reactor-mode" data-qft="compton" onclick="selectQFTProcess('compton')">
-                <i data-lucide="zap"></i>
-                <div>
-                  <strong>Compton Scattering ($e^- \gamma \to e^- \gamma$)</strong>
-                  <small>Klein-Nishina cross section</small>
-                </div>
-              </div>
-              <div class="reactor-mode" data-qft="dirac" onclick="selectQFTProcess('dirac')">
-                <i data-lucide="shield"></i>
-                <div>
-                  <strong>Dirac Gamma Matrices & Spinors</strong>
-                  <small>Clifford algebra & chiral projectors</small>
-                </div>
+            </div>
+
+            <div id="qft-block-scattering" class="hidden">
+              <div class="field-block">
+                <label><i data-lucide="zap"></i> Scattering Process</label>
+                <select id="qft-scattering-select">
+                  <option value="ee_to_mumu">e⁻ e⁺ → μ⁻ μ⁺ (s-channel annihilation)</option>
+                  <option value="compton">e⁻ γ → e⁻ γ (Compton scattering)</option>
+                </select>
               </div>
             </div>
 
             <button id="btn-eval-qft" class="btn-execute" onclick="executeQFTEval()">
               <span class="btn-glow"></span>
-              <i data-lucide="cpu"></i> Evaluate Matrix Elements & Feynman Diagram
+              <i data-lucide="cpu"></i> Evaluate QFT Expressions & Traces
             </button>
           </div>
 
           <div class="pod pipeline-pod">
             <div class="pod-header">
-              <div class="pod-title"><i data-lucide="layers"></i> Feynman Diagram & Cross Section</div>
+              <div class="pod-title"><i data-lucide="layers"></i> QFT Invariant Telemetry & Feynman Graph</div>
             </div>
             <div id="qft-results-stage" class="derive-stage">
               <div class="canvas-empty-state" id="qft-empty-state">
                 <div class="empty-glow-ring"><i data-lucide="sparkles"></i></div>
                 <h3>QFT Engine Ready</h3>
-                <p>Select a scattering process on the left to evaluate unpolarized squared matrix elements and view vector Feynman graphs.</p>
+                <p>Input custom Dirac expressions or select a scattering process on the left to evaluate exact traces, Hamiltonians, and Feynman diagrams.</p>
               </div>
               <div id="qft-content-stage" class="hidden"></div>
             </div>
@@ -742,29 +819,64 @@
         <div class="view-split">
           <div class="pod control-pod">
             <div class="pod-header">
-              <div class="pod-title"><i data-lucide="triangle"></i> Differential Forms & Geometry</div>
-              <span class="pod-badge">Exterior Calculus</span>
+              <div class="pod-title"><i data-lucide="triangle"></i> Custom Differential Forms Studio</div>
+              <span class="pod-badge">Exterior Calculus Engine</span>
             </div>
 
-            <div class="deck-label">Form Operations:</div>
             <div class="template-deck">
+              <div class="deck-label">Autofill Templates:</div>
               <div class="deck-chips-grid">
-                <button class="btn-sm-chip" onclick="executeGeometricMaxwell()">Maxwell Equations $dF = 0, \; d\star F = \mu_0 \star J$</button>
+                <button class="btn-sm-chip" onclick="loadFormsPreset('maxwell_d')">Maxwell Potential 1-Form ($F = dA$)</button>
+                <button class="btn-sm-chip" onclick="loadFormsPreset('curl_form')">Vorticity 1-Form ($y\,dx - x\,dy$)</button>
+                <button class="btn-sm-chip" onclick="loadFormsPreset('symplectic')">Symplectic Phase 2-Form ($dp \wedge dq$)</button>
+                <button class="btn-sm-chip" onclick="loadFormsPreset('hodge_3d')">Hodge Star 3D ($\star(dx \wedge dy)$)</button>
               </div>
             </div>
 
-            <button id="btn-eval-forms" class="btn-execute" onclick="executeGeometricMaxwell()">
+            <div class="field-block">
+              <label><i data-lucide="sliders"></i> Manifold Coordinates (Comma-Separated)</label>
+              <input type="text" id="forms-coords-input" value="t, x, y, z" placeholder="e.g. t, x, y, z or x, y, z or r, theta, phi">
+            </div>
+
+            <div class="field-block">
+              <label><i data-lucide="edit-3"></i> Differential Form $\omega_1$</label>
+              <input type="text" id="forms-form1-input" value="-phi*dt + Ax*dx + Ay*dy + Az*dz" placeholder="e.g. y*dx - x*dy or -phi*dt + Ax*dx + Ay*dy">
+            </div>
+
+            <div class="field-row">
+              <div class="field-block">
+                <label><i data-lucide="git-commit"></i> Operation</label>
+                <select id="forms-op-select" onchange="onFormsOpChange()">
+                  <option value="d">Exterior Derivative d(ω)</option>
+                  <option value="star">Hodge Dual ⋆(ω)</option>
+                  <option value="wedge">Wedge Product (ω₁ ∧ ω₂)</option>
+                  <option value="field_strength">Gauge Field Strength F = dA</option>
+                </select>
+              </div>
+              <div class="field-block" id="forms-form2-container" style="display: none;">
+                <label><i data-lucide="edit-3"></i> Differential Form $\omega_2$</label>
+                <input type="text" id="forms-form2-input" value="z*dz" placeholder="e.g. z*dz">
+              </div>
+            </div>
+
+            <button id="btn-eval-forms" class="btn-execute" onclick="executeCustomFormEval()">
               <span class="btn-glow"></span>
-              <i data-lucide="cpu"></i> Derive Geometric Maxwell Equations
+              <i data-lucide="cpu"></i> Evaluate Exterior Calculus Operation
             </button>
           </div>
 
           <div class="pod pipeline-pod">
             <div class="pod-header">
-              <div class="pod-title"><i data-lucide="workflow"></i> Coordinate-Free Maxwell Electrodynamics</div>
+              <div class="pod-title"><i data-lucide="workflow"></i> Differential Form Telemetry & Exactness</div>
             </div>
             <div id="forms-results-stage" class="derive-stage">
-              <div id="forms-content-stage"></div>
+              <div id="forms-content-stage">
+                <div class="canvas-empty-state">
+                  <div class="empty-glow-ring"><i data-lucide="triangle"></i></div>
+                  <h3>Exterior Calculus Ready</h3>
+                  <p>Define custom differential forms and choose exterior derivative, Hodge star, or wedge product to compute coordinate-free geometry.</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -775,47 +887,48 @@
         <div class="view-split">
           <div class="pod control-pod">
             <div class="pod-header">
-              <div class="pod-title"><i data-lucide="network"></i> Symmetries & Gauge Theory</div>
-              <span class="pod-badge">Lie Groups & Higgs</span>
+              <div class="pod-title"><i data-lucide="network"></i> Custom Lie Algebra & Symmetries Studio</div>
+              <span class="pod-badge">Commutators / Casimir / Higgs</span>
             </div>
 
-            <div class="deck-label">Select Symmetry Model:</div>
-            <div class="reactor-mode-selector">
-              <div class="reactor-mode active" data-sym="su2" onclick="selectSymmetry('su2')">
-                <i data-lucide="orbit"></i>
-                <div>
-                  <strong>$\mathfrak{su}(2)$ Lie Algebra (Spin)</strong>
-                  <small>Pauli matrices & Casimir $C_2 = \frac{3}{4}\mathbb{I}_2$</small>
-                </div>
-              </div>
-              <div class="reactor-mode" data-sym="su3" onclick="selectSymmetry('su3')">
-                <i data-lucide="hexagon"></i>
-                <div>
-                  <strong>$\mathfrak{su}(3)$ Lie Algebra (QCD Gluons)</strong>
-                  <small>8 Gell-Mann generators & $C_2 = \frac{4}{3}\mathbb{I}_3$</small>
-                </div>
-              </div>
-              <div class="reactor-mode" data-sym="higgs" onclick="selectSymmetry('higgs')">
-                <i data-lucide="shield-check"></i>
-                <div>
-                  <strong>Higgs Spontaneous Symmetry Breaking</strong>
-                  <small>$SU(2)_L \times U(1)_Y \to U(1)_{EM}$ Boson Mass Spectrum</small>
-                </div>
+            <div class="template-deck">
+              <div class="deck-label">Autofill Generator Templates:</div>
+              <div class="deck-chips-grid">
+                <button class="btn-sm-chip" onclick="loadSymPreset('su2')">SU(2) Pauli Spin-1/2</button>
+                <button class="btn-sm-chip" onclick="loadSymPreset('su3')">SU(3) 8 Gell-Mann Gluons</button>
+                <button class="btn-sm-chip" onclick="loadSymPreset('so3')">SO(3) 3D Angular Momentum</button>
+                <button class="btn-sm-chip" onclick="loadSymPreset('higgs')">Electroweak Higgs SSB Spectrum</button>
               </div>
             </div>
 
-            <button id="btn-eval-sym" class="btn-execute" onclick="executeSymmetryEval()">
+            <div class="field-block">
+              <label><i data-lucide="edit-3"></i> Custom Generator Matrices $T_1, T_2, \dots$ (Semicolon-Separated)</label>
+              <textarea id="sym-matrices-input" rows="4" style="width: 100%; background: var(--bg-field); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); color: var(--text-pure); font-family: var(--font-mono); padding: 0.7rem; font-size: 0.85rem;" placeholder="e.g. [[0, 1], [1, 0]]; [[0, -I], [I, 0]]; [[1, 0], [0, -1]]">[[0, 1/2], [1/2, 0]]; [[0, -I/2], [I/2, 0]]; [[1/2, 0], [0, -1/2]]</textarea>
+            </div>
+
+            <div class="field-block">
+              <label><i data-lucide="tag"></i> Algebra Title</label>
+              <input type="text" id="sym-name-input" value="Custom SU(2) Spin Algebra">
+            </div>
+
+            <button id="btn-eval-sym" class="btn-execute" onclick="executeCustomSymmetryEval()">
               <span class="btn-glow"></span>
-              <i data-lucide="cpu"></i> Evaluate Lie Algebra & Commutators
+              <i data-lucide="cpu"></i> Evaluate Commutator Table, Jacobi & Casimir
             </button>
           </div>
 
           <div class="pod pipeline-pod">
             <div class="pod-header">
-              <div class="pod-title"><i data-lucide="layers"></i> Group Generators & Mass Spectrum</div>
+              <div class="pod-title"><i data-lucide="layers"></i> Group Invariants, Structure Constants & Casimir</div>
             </div>
             <div id="sym-results-stage" class="derive-stage">
-              <div id="sym-content-stage"></div>
+              <div id="sym-content-stage">
+                <div class="canvas-empty-state">
+                  <div class="empty-glow-ring"><i data-lucide="network"></i></div>
+                  <h3>Lie Algebra Studio Ready</h3>
+                  <p>Input custom matrix generators on the left to evaluate exact commutation relations, verify the Jacobi identity, and derive the quadratic Casimir invariant.</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -826,47 +939,49 @@
         <div class="view-split">
           <div class="pod control-pod">
             <div class="pod-header">
-              <div class="pod-title"><i data-lucide="flame"></i> Statistical Mechanics Lab</div>
-              <span class="pod-badge">Partition Functions $\mathcal{Z}$</span>
+              <div class="pod-title"><i data-lucide="flame"></i> Custom Statistical Mechanics Studio</div>
+              <span class="pod-badge">Partition Function $\mathcal{Z} \to (F, S, U, P, C_v)$</span>
             </div>
 
-            <div class="deck-label">Select Thermodynamic Ensemble:</div>
-            <div class="reactor-mode-selector">
-              <div class="reactor-mode active" data-stat="ideal_gas" onclick="selectStatMech('ideal_gas')">
-                <i data-lucide="box"></i>
-                <div>
-                  <strong>Classical Monatomic Ideal Gas</strong>
-                  <small>Sackur-Tetrode entropy & $PV = Nk_B T$</small>
-                </div>
-              </div>
-              <div class="reactor-mode" data-stat="quantum_oscillator" onclick="selectStatMech('quantum_oscillator')">
-                <i data-lucide="activity"></i>
-                <div>
-                  <strong>Quantum Harmonic Oscillator</strong>
-                  <small>Zero-point energy & Einstein heat capacity</small>
-                </div>
-              </div>
-              <div class="reactor-mode" data-stat="distributions" onclick="selectStatMech('distributions')">
-                <i data-lucide="bar-chart-2"></i>
-                <div>
-                  <strong>Quantum Statistics & Planck Law</strong>
-                  <small>Bose-Einstein, Fermi-Dirac, Stefan-Boltzmann</small>
-                </div>
+            <div class="template-deck">
+              <div class="deck-label">Autofill Ensemble Templates:</div>
+              <div class="deck-chips-grid">
+                <button class="btn-sm-chip" onclick="loadStatPreset('ideal_gas')">Ideal Gas: $\frac{V}{\lambda^3}$</button>
+                <button class="btn-sm-chip" onclick="loadStatPreset('paramagnet')">Paramagnet: $2\cosh(\frac{\mu_B B}{k_B T})^N$</button>
+                <button class="btn-sm-chip" onclick="loadStatPreset('quantum_oscillator')">Oscillator: $\frac{1}{2\sinh(\beta\hbar\omega/2)}$</button>
+                <button class="btn-sm-chip" onclick="loadStatPreset('two_level')">2-Level: $1 + e^{-\beta\epsilon}$</button>
+                <button class="btn-sm-chip" onclick="loadStatPreset('distributions')">Quantum Statistics (BE / FD / Planck)</button>
               </div>
             </div>
 
-            <button id="btn-eval-stat" class="btn-execute" onclick="executeStatMechEval()">
+            <div class="field-block">
+              <label><i data-lucide="edit-3"></i> Custom Canonical Partition Function $\mathcal{Z}(T, V, N, B, \dots)$</label>
+              <input type="text" id="stat-partition-input" value="(V / h^3) * (2*pi*m*k_B*T)^(3/2)" placeholder="e.g. 2*cosh(mu_B*B / (k_B*T))^N or 1 + exp(-beta*epsilon)">
+            </div>
+
+            <div class="field-block">
+              <label><i data-lucide="tag"></i> Thermodynamic Model Title</label>
+              <input type="text" id="stat-name-input" value="Custom Thermodynamic Ensemble">
+            </div>
+
+            <button id="btn-eval-stat" class="btn-execute" onclick="executeCustomStatMechEval()">
               <span class="btn-glow"></span>
-              <i data-lucide="cpu"></i> Deducing Potentials $F, S, U, C_v$
+              <i data-lucide="cpu"></i> Deduce Thermodynamic Potentials $F, S, U, P, C_v, M$
             </button>
           </div>
 
           <div class="pod pipeline-pod">
             <div class="pod-header">
-              <div class="pod-title"><i data-lucide="layers"></i> Thermodynamic Observables</div>
+              <div class="pod-title"><i data-lucide="layers"></i> Exact Thermodynamic Potentials & Equations of State</div>
             </div>
             <div id="stat-results-stage" class="derive-stage">
-              <div id="stat-content-stage"></div>
+              <div id="stat-content-stage">
+                <div class="canvas-empty-state">
+                  <div class="empty-glow-ring"><i data-lucide="flame"></i></div>
+                  <h3>Partition Function Engine Ready</h3>
+                  <p>Input any symbolic partition function $\mathcal{Z}$ to automatically derive Helmholtz free energy $F$, Sackur-Tetrode entropy $S$, internal energy $U$, pressure $P$, magnetization $M$, and heat capacity $C_v$.</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -52,11 +52,15 @@ class PartitionFunctionEngine:
         V = sp.Symbol("V", positive=True, real=True)
         N = sp.Symbol("N", positive=True, real=True)
         kB = sp.Symbol("k_B", positive=True, real=True)
+        B = sp.Symbol("B", real=True)
+        beta = sp.Symbol("beta", positive=True, real=True)
 
         if isinstance(Z_expr, str):
-            Z = parse_expression_safely(Z_expr)
+            # If user used beta, substitute beta -> 1/(k_B * T)
+            parsed = parse_expression_safely(Z_expr)
+            Z = parsed.subs([(s, 1 / (kB * T)) for s in parsed.free_symbols if s.name == "beta"])
         else:
-            Z = Z_expr
+            Z = Z_expr.subs([(s, 1 / (kB * T)) for s in Z_expr.free_symbols if s.name == "beta"])
 
         # 1. Helmholtz Free Energy F = -k_B * T * ln(Z)
         F_raw = -kB * T * sp.log(Z)
@@ -65,14 +69,22 @@ class PartitionFunctionEngine:
         # 2. Entropy S = - dF/dT
         S = sp.simplify(-sp.diff(F, T))
 
-        # 3. Internal Energy U = F + T*S = - d(ln Z)/d beta
+        # 3. Internal Energy U = F + T*S
         U = sp.simplify(F + T * S)
 
         # 4. Pressure P = - dF/dV
-        P = sp.simplify(-sp.diff(F, V)) if has_volume else None
+        P = sp.simplify(-sp.diff(F, V)) if any(s.name == "V" for s in Z.free_symbols) else None
 
         # 5. Heat Capacity Cv = dU/dT = -T * d^2 F / dT^2
         Cv = sp.simplify(sp.diff(U, T))
+
+        # 6. Magnetization M = - dF/dB (if magnetic field B present)
+        has_B = any(s.name == "B" for s in Z.free_symbols)
+        M = sp.simplify(-sp.diff(F, B)) if has_B else None
+
+        # 7. Chemical Potential mu = dF/dN (if N present)
+        has_N = any(s.name == "N" for s in Z.free_symbols)
+        mu = sp.simplify(sp.diff(F, N)) if has_N else None
 
         # Equation of state if pressure is available
         eos_latex = f"P = {sp.latex(P)}" if P is not None else None
@@ -92,6 +104,10 @@ class PartitionFunctionEngine:
         )
         if P is not None:
             md += f"\n## 6. Equation of State ($P = -\\frac{{\\partial F}}{{\\partial V}}$)\n$$P = {sp.latex(P)}$$\n"
+        if M is not None:
+            md += f"\n## 7. Magnetization ($M = -\\frac{{\\partial F}}{{\\partial B}}$)\n$$M = {sp.latex(M)}$$\n"
+        if mu is not None:
+            md += f"\n## 8. Chemical Potential ($\\mu = \\frac{{\\partial F}}{{\\partial N}}$)\n$$\\mu = {sp.latex(mu)}$$\n"
 
         return ThermodynamicPotentialsResult(
             model_name=model_name,

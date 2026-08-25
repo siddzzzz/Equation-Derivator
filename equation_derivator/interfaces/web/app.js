@@ -889,27 +889,53 @@ let simAnimationId = null;
 let simIsPlaying = true;
 let simCurrentFrame = 0;
 let simTrajectoryData = null;
-let selectedSimPreset = 'pendulum';
+
+function onSimModeChange() {
+  const mode = document.getElementById('sim-mode-select').value;
+  document.getElementById('sim-block-classical').classList.toggle('hidden', mode !== 'phase_portrait');
+  document.getElementById('sim-block-quantum').classList.toggle('hidden', mode !== 'quantum');
+  document.getElementById('sim-block-relativity').classList.toggle('hidden', mode !== 'relativity');
+}
 
 function loadSimPreset(presetKey) {
-  selectedSimPreset = presetKey;
-  const accelInput = document.getElementById('sim-accel-input');
-  const q0Input = document.getElementById('sim-q0-input');
-  const v0Input = document.getElementById('sim-v0-input');
-
+  const modeSelect = document.getElementById('sim-mode-select');
   if (presetKey === 'pendulum') {
-    accelInput.value = '-9.81 * sin(theta)';
-    q0Input.value = '1.5';
-    v0Input.value = '0.0';
+    modeSelect.value = 'phase_portrait';
+    document.getElementById('sim-accel-input').value = '-9.81 * sin(theta)';
+    document.getElementById('sim-q0-input').value = '1.5';
+    document.getElementById('sim-v0-input').value = '0.0';
   } else if (presetKey === 'harmonic') {
-    accelInput.value = '-4.0 * x';
-    q0Input.value = '1.0';
-    v0Input.value = '0.0';
-  } else if (presetKey === 'quantum') {
-    accelInput.value = 'Quantum Wave Tunneling (Split-Operator FFT)';
-  } else if (presetKey === 'orbit') {
-    accelInput.value = 'Schwarzschild Geodesic Ray Tracer';
+    modeSelect.value = 'phase_portrait';
+    document.getElementById('sim-accel-input').value = '-4.0 * x';
+    document.getElementById('sim-q0-input').value = '1.0';
+    document.getElementById('sim-v0-input').value = '0.0';
+  } else if (presetKey === 'duffing') {
+    modeSelect.value = 'phase_portrait';
+    document.getElementById('sim-accel-input').value = '-0.2*v - 1.0*x - 1.0*x^3 + 2.0*cos(1.2*t)';
+    document.getElementById('sim-q0-input').value = '1.0';
+    document.getElementById('sim-v0-input').value = '0.0';
+  } else if (presetKey === 'quantum_barrier') {
+    modeSelect.value = 'quantum';
+    document.getElementById('sim-quantum-potential-input').value = '4.0 * (abs(x) < 0.5)';
+    document.getElementById('sim-quantum-p0').value = '3.0';
+    document.getElementById('sim-quantum-sigma').value = '0.5';
+  } else if (presetKey === 'quantum_well') {
+    modeSelect.value = 'quantum';
+    document.getElementById('sim-quantum-potential-input').value = '0.5 * x^2';
+    document.getElementById('sim-quantum-p0').value = '0.0';
+    document.getElementById('sim-quantum-sigma').value = '0.7';
+  } else if (presetKey === 'orbit_bound') {
+    modeSelect.value = 'relativity';
+    document.getElementById('sim-rel-M').value = '1.0';
+    document.getElementById('sim-rel-r0').value = '12.0';
+    document.getElementById('sim-rel-vphi').value = '0.28';
+  } else if (presetKey === 'orbit_photon') {
+    modeSelect.value = 'relativity';
+    document.getElementById('sim-rel-M').value = '1.0';
+    document.getElementById('sim-rel-r0').value = '20.0';
+    document.getElementById('sim-rel-vphi').value = '6.0';
   }
+  onSimModeChange();
   executeSimulation();
 }
 
@@ -921,13 +947,24 @@ async function executeSimulation() {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  if (selectedSimPreset === 'quantum') {
+  const mode = document.getElementById('sim-mode-select').value;
+
+  if (mode === 'quantum') {
+    const pot = document.getElementById('sim-quantum-potential-input').value;
+    const p0 = parseFloat(document.getElementById('sim-quantum-p0').value) || 3.0;
+    const sig = parseFloat(document.getElementById('sim-quantum-sigma').value) || 0.5;
+
     try {
       const res = await fetch('/api/sim/quantum-wave', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ barrier_type: 'barrier', barrier_height: 4.0, p0: 3.0 })
+        body: JSON.stringify({
+          custom_potential_expr: pot,
+          p0: p0,
+          sigma: sig
+        })
       });
+      if (!res.ok) throw new Error((await res.json()).detail || 'Quantum simulation error');
       const data = await res.json();
       renderQuantumWaveFrames(data);
     } catch (e) {
@@ -936,13 +973,25 @@ async function executeSimulation() {
     return;
   }
 
-  if (selectedSimPreset === 'orbit') {
+  if (mode === 'relativity') {
+    const M = parseFloat(document.getElementById('sim-rel-M').value) || 1.0;
+    const r0 = parseFloat(document.getElementById('sim-rel-r0').value) || 12.0;
+    const vphi = parseFloat(document.getElementById('sim-rel-vphi').value) || 0.28;
+    const isPhoton = r0 > 15.0;
+
     try {
       const res = await fetch('/api/sim/relativity-orbit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: 'particle', r0: 12.0, v_phi0: 0.28 })
+        body: JSON.stringify({
+          mode: isPhoton ? 'photon' : 'particle',
+          M: M,
+          r0: r0,
+          v_phi0: vphi,
+          impact_parameter_b: vphi
+        })
       });
+      if (!res.ok) throw new Error((await res.json()).detail || 'Relativity simulation error');
       const data = await res.json();
       renderOrbitTrajectory(data);
     } catch (e) {
@@ -962,7 +1011,7 @@ async function executeSimulation() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         accel_expr: accel,
-        coord_name: 'theta',
+        coord_name: accel.includes('x') ? 'x' : 'theta',
         q0: q0,
         v0: v0,
         t_end: 10.0,
@@ -1165,13 +1214,33 @@ function resetSimCanvas() {
 }
 
 /* ================= QFT & FEYNMAN LAB ================= */
-let selectedQFT = 'ee_to_mumu';
+function onQFTModeChange() {
+  const mode = document.getElementById('qft-mode-select').value;
+  document.getElementById('qft-block-trace').classList.toggle('hidden', mode !== 'custom_trace');
+  document.getElementById('qft-block-hamiltonian').classList.toggle('hidden', mode !== 'dirac_hamiltonian');
+  document.getElementById('qft-block-scattering').classList.toggle('hidden', mode !== 'scattering');
+}
 
-function selectQFTProcess(key) {
-  selectedQFT = key;
-  document.querySelectorAll('#view-qft .reactor-mode').forEach(m => {
-    m.classList.toggle('active', m.getAttribute('data-qft') === key);
-  });
+function loadQFTPreset(presetKey) {
+  const modeSelect = document.getElementById('qft-mode-select');
+  if (presetKey === 'trace_4g') {
+    modeSelect.value = 'custom_trace';
+    document.getElementById('qft-custom-expr').value = 'gamma0 * gamma1 * gamma0 * gamma1';
+  } else if (presetKey === 'trace_g5') {
+    modeSelect.value = 'custom_trace';
+    document.getElementById('qft-custom-expr').value = 'gamma5 * gamma0 * gamma1 * gamma2 * gamma3';
+  } else if (presetKey === 'dirac_hamiltonian') {
+    modeSelect.value = 'dirac_hamiltonian';
+    document.getElementById('qft-mass-input').value = '0.511';
+    document.getElementById('qft-momentum-input').value = '1.0, 0.0, 0.0';
+  } else if (presetKey === 'ee_to_mumu') {
+    modeSelect.value = 'scattering';
+    document.getElementById('qft-scattering-select').value = 'ee_to_mumu';
+  } else if (presetKey === 'compton') {
+    modeSelect.value = 'scattering';
+    document.getElementById('qft-scattering-select').value = 'compton';
+  }
+  onQFTModeChange();
   executeQFTEval();
 }
 
@@ -1179,40 +1248,69 @@ async function executeQFTEval() {
   const emptyState = document.getElementById('qft-empty-state');
   const stage = document.getElementById('qft-content-stage');
   emptyState.classList.add('hidden');
-  stage.innerHTML = '<div class="canvas-loading-state"><div class="reactor-spinner"><div class="reactor-core"></div></div><div class="loading-label">Evaluating Feynman Scattering Amplitudes & Trace Identities...</div></div>';
+  stage.innerHTML = '<div class="canvas-loading-state"><div class="reactor-spinner"><div class="reactor-core"></div></div><div class="loading-label">Evaluating Exact Quantum Field Theory Invariants & Traces...</div></div>';
   stage.classList.remove('hidden');
 
+  const mode = document.getElementById('qft-mode-select').value;
+
   try {
-    if (selectedQFT === 'dirac') {
-      const res = await fetch('/api/qft/dirac', {
+    if (mode === 'custom_trace') {
+      const expr = document.getElementById('qft-custom-expr').value;
+      const res = await fetch('/api/qft/custom', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ representation: 'dirac' })
+        body: JSON.stringify({ mode: 'gamma_trace', expression: expr, compute_trace: true })
       });
+      if (!res.ok) throw new Error((await res.json()).detail || 'Failed');
       const data = await res.json();
       stage.innerHTML = `
         <div class="derived-banner">
-          <div class="verified-tag"><i data-lucide="shield"></i> CLIFFORD ALGEBRA VALID: ${data.clifford_anticommutators_valid}</div>
-          <div class="tag-domain">Dirac Spinor Representation</div>
+          <div class="verified-tag"><i data-lucide="shield"></i> DIRAC MATRIX TRACE EVALUATOR</div>
+          <div class="tag-domain">Input: ${data.input_expression}</div>
         </div>
         <div class="dag-container"><div class="dag-steps">
           <div class="dag-node">
-            <div class="dag-node-header"><span class="step-op-title">Gamma Matrices & Chiral $\\gamma^5$</span></div>
-            <div class="dag-formula-box" id="qft-g0"></div>
-          </div>
-          <div class="dag-node">
-            <div class="dag-node-header"><span class="step-op-title">Spinor Completeness Relations</span></div>
-            <div class="dag-formula-box" id="qft-spin-sum"></div>
+            <div class="dag-node-header"><span class="step-op-title">Exact Trace $\\operatorname{Tr}(M)$</span></div>
+            <div class="dag-formula-box" id="qft-res-trace"></div>
           </div>
         </div></div>
       `;
-      katex.render(`\\gamma^0 = ${data.gamma_matrices_latex['\\gamma^0']}, \\quad \\gamma^5 = ${data.gamma5_latex}`, document.getElementById('qft-g0'), { displayMode: true, throwOnError: false });
-      katex.render(data.spin_sum_u_latex, document.getElementById('qft-spin-sum'), { displayMode: true, throwOnError: false });
+      katex.render(`\\operatorname{Tr}\\left(${data.input_expression}\\right) = ${data.evaluated_result_latex}`, document.getElementById('qft-res-trace'), { displayMode: true, throwOnError: false });
+    } else if (mode === 'dirac_hamiltonian') {
+      const m = parseFloat(document.getElementById('qft-mass-input').value) || 0.511;
+      const pParts = document.getElementById('qft-momentum-input').value.split(',').map(x => parseFloat(x.trim()) || 0);
+      const res = await fetch('/api/qft/custom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'dirac_hamiltonian',
+          mass: m,
+          px: pParts[0] || 1.0,
+          py: pParts[1] || 0.0,
+          pz: pParts[2] || 0.0
+        })
+      });
+      if (!res.ok) throw new Error((await res.json()).detail || 'Failed');
+      const data = await res.json();
+      stage.innerHTML = `
+        <div class="derived-banner">
+          <div class="verified-tag"><i data-lucide="activity"></i> RELATIVISTIC DISPERSION $E = \\pm\\sqrt{p^2 + m^2}$</div>
+          <div class="tag-domain">Mass: ${m} | Momenta: (${pParts.join(', ')})</div>
+        </div>
+        <div class="dag-container"><div class="dag-steps">
+          <div class="dag-node">
+            <div class="dag-node-header"><span class="step-op-title">Energy Eigenvalues</span></div>
+            <div class="dag-formula-box" id="qft-res-eigs"></div>
+          </div>
+        </div></div>
+      `;
+      katex.render(data.evaluated_result_latex, document.getElementById('qft-res-eigs'), { displayMode: true, throwOnError: false });
     } else {
+      const proc = document.getElementById('qft-scattering-select').value;
       const res = await fetch('/api/qft/feynman', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ process: selectedQFT })
+        body: JSON.stringify({ process: proc })
       });
       const data = await res.json();
       stage.innerHTML = `
@@ -1249,84 +1347,171 @@ async function executeQFTEval() {
 }
 
 /* ================= DIFFERENTIAL FORMS ================= */
-async function executeGeometricMaxwell() {
+function onFormsOpChange() {
+  const op = document.getElementById('forms-op-select').value;
+  document.getElementById('forms-form2-container').style.display = (op === 'wedge') ? 'block' : 'none';
+}
+
+function loadFormsPreset(presetKey) {
+  const coords = document.getElementById('forms-coords-input');
+  const f1 = document.getElementById('forms-form1-input');
+  const op = document.getElementById('forms-op-select');
+  const f2 = document.getElementById('forms-form2-input');
+
+  if (presetKey === 'maxwell_d') {
+    coords.value = 't, x, y, z';
+    f1.value = '-phi*dt + Ax*dx + Ay*dy + Az*dz';
+    op.value = 'd';
+  } else if (presetKey === 'curl_form') {
+    coords.value = 'x, y, z';
+    f1.value = 'y*dx - x*dy';
+    op.value = 'd';
+  } else if (presetKey === 'symplectic') {
+    coords.value = 'q, p';
+    f1.value = 'dp';
+    op.value = 'wedge';
+    f2.value = 'dq';
+  } else if (presetKey === 'hodge_3d') {
+    coords.value = 'x, y, z';
+    f1.value = 'dx^dy';
+    op.value = 'star';
+  }
+  onFormsOpChange();
+  executeCustomFormEval();
+}
+
+async function executeCustomFormEval() {
   const stage = document.getElementById('forms-content-stage');
   stage.innerHTML = '<div class="canvas-loading-state"><div class="reactor-spinner"><div class="reactor-core"></div></div><div class="loading-label">Evaluating Exterior Derivatives & Hodge Duals...</div></div>';
 
+  const coords = document.getElementById('forms-coords-input').value.split(',').map(x => x.trim()).filter(x => x);
+  const f1 = document.getElementById('forms-form1-input').value;
+  const op = document.getElementById('forms-op-select').value;
+  const f2 = document.getElementById('forms-form2-input').value;
+
   try {
-    const res = await fetch('/api/geometry/maxwell', { method: 'POST' });
+    const res = await fetch('/api/geometry/custom-form', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        operation: op,
+        form1: f1,
+        coordinates: coords,
+        form2: op === 'wedge' ? f2 : null
+      })
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Failed');
     const data = await res.json();
+
     stage.innerHTML = `
       <div class="derived-banner">
-        <div class="verified-tag"><i data-lucide="triangle"></i> EXACT TOPOLOGICAL CLOSURE: dF = d(dA) = 0</div>
-        <div class="math-hero" id="forms-hero-A"></div>
+        <div class="verified-tag"><i data-lucide="triangle"></i> RESULT: ${data.result_degree}-FORM</div>
+        <div class="math-hero" id="forms-hero-math"></div>
       </div>
       <div class="dag-container"><div class="dag-steps">
         <div class="dag-node">
-          <div class="dag-node-header"><span class="step-order-badge">2-Form</span><span class="step-op-title">Field Strength $F = dA$</span></div>
-          <div class="dag-formula-box" id="forms-F-elem"></div>
-        </div>
-        <div class="dag-node">
-          <div class="dag-node-header"><span class="step-order-badge">Homogeneous</span><span class="step-op-title">Bianchi Identity ($dF = 0$)</span></div>
-          <div class="dag-formula-box" id="forms-dF-elem"></div>
-        </div>
-        <div class="dag-node">
-          <div class="dag-node-header"><span class="step-order-badge">Inhomogeneous</span><span class="step-op-title">Source Coupling ($d\\star F = \\mu_0 \\star J$)</span></div>
-          <div class="dag-formula-box" id="forms-dstar-elem"></div>
+          <div class="dag-node-header"><span class="step-op-title">Operation Result $\\Omega$</span></div>
+          <div class="dag-formula-box" id="forms-box-res"></div>
         </div>
       </div></div>
     `;
-    katex.render(data.potential_1form_latex, document.getElementById('forms-hero-A'), { displayMode: true, throwOnError: false });
-    katex.render(data.field_strength_2form_latex, document.getElementById('forms-F-elem'), { displayMode: true, throwOnError: false });
-    katex.render(data.homogeneous_maxwell_latex, document.getElementById('forms-dF-elem'), { displayMode: true, throwOnError: false });
-    katex.render(data.inhomogeneous_maxwell_latex, document.getElementById('forms-dstar-elem'), { displayMode: true, throwOnError: false });
+    katex.render(`\\Omega = ${data.result_form_latex}`, document.getElementById('forms-hero-math'), { displayMode: true, throwOnError: false });
+    katex.render(`\\text{Input: } \\omega = ${data.input_form_latex} \\implies \\Omega = ${data.result_form_latex}`, document.getElementById('forms-box-res'), { displayMode: true, throwOnError: false });
     lucide.createIcons();
   } catch (e) {
     stage.innerHTML = `<div class="canvas-empty-state"><p style="color: var(--plasma-crimson)">${e.message}</p></div>`;
   }
 }
 
-/* ================= SYMMETRIES & HIGGS ================= */
-let selectedSymmetryMode = 'su2';
+/* ================= SYMMETRIES & LIE ALGEBRAS ================= */
+function loadSymPreset(presetKey) {
+  const mats = document.getElementById('sym-matrices-input');
+  const title = document.getElementById('sym-name-input');
 
-function selectSymmetry(modeKey) {
-  selectedSymmetryMode = modeKey;
-  document.querySelectorAll('#view-symmetry .reactor-mode').forEach(m => {
-    m.classList.toggle('active', m.getAttribute('data-sym') === modeKey);
-  });
-  executeSymmetryEval();
+  if (presetKey === 'su2') {
+    mats.value = '[[0, 1/2], [1/2, 0]]; [[0, -I/2], [I/2, 0]]; [[1/2, 0], [0, -1/2]]';
+    title.value = 'SU(2) Pauli Spin-1/2 Algebra';
+  } else if (presetKey === 'so3') {
+    mats.value = '[[0, 0, 0], [0, 0, -1], [0, 1, 0]]; [[0, 0, 1], [0, 0, 0], [-1, 0, 0]]; [[0, -1, 0], [1, 0, 0], [0, 0, 0]]';
+    title.value = 'SO(3) 3D Rotational Generators';
+  } else if (presetKey === 'su3') {
+    mats.value = '[[0, 1, 0], [1, 0, 0], [0, 0, 0]]; [[0, -I, 0], [I, 0, 0], [0, 0, 0]]; [[1, 0, 0], [0, -1, 0], [0, 0, 0]]; [[0, 0, 1], [0, 0, 0], [1, 0, 0]]';
+    title.value = 'SU(3) Color Gell-Mann Generators';
+  } else if (presetKey === 'higgs') {
+    selectSymmetryPresetStandard('higgs');
+    return;
+  }
+  executeCustomSymmetryEval();
 }
 
-async function executeSymmetryEval() {
+async function selectSymmetryPresetStandard(modeKey) {
   const stage = document.getElementById('sym-content-stage');
-  stage.innerHTML = '<div class="canvas-loading-state"><div class="reactor-spinner"><div class="reactor-core"></div></div><div class="loading-label">Evaluating Lie Commutators & Gauge Invariance...</div></div>';
-
+  stage.innerHTML = '<div class="canvas-loading-state"><div class="reactor-spinner"><div class="reactor-core"></div></div><div class="loading-label">Evaluating Gauge Group SSB & Masses...</div></div>';
   try {
     const res = await fetch('/api/symmetry/eval', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: selectedSymmetryMode })
+      body: JSON.stringify({ mode: modeKey })
     });
     const data = await res.json();
     stage.innerHTML = `
       <div class="derived-banner">
-        <div class="verified-tag"><i data-lucide="network"></i> ${data.gauge_group || data.group_name}</div>
+        <div class="verified-tag"><i data-lucide="shield-check"></i> HIGGS SSB: SU(2) x U(1) -> U(1)</div>
         <div class="math-hero" id="sym-hero-math"></div>
       </div>
       <div class="dag-container"><div class="dag-steps">
         <div class="dag-node">
-          <div class="dag-node-header"><span class="step-op-title">Algebra Invariants & Commutators</span></div>
+          <div class="dag-node-header"><span class="step-op-title">Gauge Boson Mass Spectrum</span></div>
           <div class="dag-formula-box" id="sym-box-1"></div>
         </div>
       </div></div>
     `;
-    if (data.casimir_operator_latex) {
-      katex.render(`C_2 = ${data.casimir_operator_latex}`, document.getElementById('sym-hero-math'), { displayMode: true, throwOnError: false });
-      katex.render(data.commutation_relations_latex ? data.commutation_relations_latex[0] : '', document.getElementById('sym-box-1'), { displayMode: true, throwOnError: false });
-    } else if (data.covariant_derivative_latex) {
-      katex.render(data.covariant_derivative_latex, document.getElementById('sym-hero-math'), { displayMode: true, throwOnError: false });
-      katex.render(data.field_strength_tensor_latex, document.getElementById('sym-box-1'), { displayMode: true, throwOnError: false });
-    }
+    katex.render(data.covariant_derivative_latex || 'D_\\mu', document.getElementById('sym-hero-math'), { displayMode: true, throwOnError: false });
+    katex.render(`M_W = \\frac{1}{2} g v, \\quad M_Z = \\frac{1}{2}\\sqrt{g^2+g'^2} v, \\quad M_\\gamma = 0`, document.getElementById('sym-box-1'), { displayMode: true, throwOnError: false });
+    lucide.createIcons();
+  } catch (e) {
+    stage.innerHTML = `<div class="canvas-empty-state"><p style="color: var(--plasma-crimson)">${e.message}</p></div>`;
+  }
+}
+
+async function executeCustomSymmetryEval() {
+  const stage = document.getElementById('sym-content-stage');
+  stage.innerHTML = '<div class="canvas-loading-state"><div class="reactor-spinner"><div class="reactor-core"></div></div><div class="loading-label">Evaluating Lie Commutator Tables & Casimir Invariants...</div></div>';
+
+  const mats = document.getElementById('sym-matrices-input').value;
+  const name = document.getElementById('sym-name-input').value;
+
+  try {
+    const res = await fetch('/api/symmetry/custom', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ generators: mats, algebra_name: name })
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Failed');
+    const data = await res.json();
+
+    stage.innerHTML = `
+      <div class="derived-banner">
+        <div class="verified-tag"><i data-lucide="network"></i> ${data.algebra_name} (Dim ${data.dimension})</div>
+        <div class="math-hero" id="sym-hero-math"></div>
+      </div>
+      <div class="dag-container"><div class="dag-steps">
+        <div class="dag-node">
+          <div class="dag-node-header"><span class="step-op-title">Quadratic Casimir Invariant $C_2 = \\sum T_a^2$</span></div>
+          <div class="dag-formula-box" id="sym-box-casimir"></div>
+        </div>
+        <div class="dag-node">
+          <div class="dag-node-header"><span class="step-op-title">Commutators & Jacobi Identity Check</span></div>
+          <div class="dag-formula-box" id="sym-box-comm"></div>
+        </div>
+      </div></div>
+    `;
+    katex.render(`C_2 = ${data.casimir_operator_latex}`, document.getElementById('sym-hero-math'), { displayMode: true, throwOnError: false });
+    katex.render(`C_2 = ${data.casimir_operator_latex}`, document.getElementById('sym-box-casimir'), { displayMode: true, throwOnError: false });
+
+    const firstComm = Object.entries(data.commutator_table_latex)[0];
+    const commStr = firstComm ? `${firstComm[0]} = ${firstComm[1]}` : '\\text{Commutators Verified}';
+    katex.render(`\\text{Jacobi Identity: } ${data.is_jacobi_identity_satisfied ? '\\text{True}' : '\\text{False}'} \\quad | \\quad ${commStr}`, document.getElementById('sym-box-comm'), { displayMode: true, throwOnError: false });
     lucide.createIcons();
   } catch (e) {
     stage.innerHTML = `<div class="canvas-empty-state"><p style="color: var(--plasma-crimson)">${e.message}</p></div>`;
@@ -1334,35 +1519,83 @@ async function executeSymmetryEval() {
 }
 
 /* ================= STATISTICAL MECHANICS ================= */
-let selectedStatMode = 'ideal_gas';
+function loadStatPreset(presetKey) {
+  const partInput = document.getElementById('stat-partition-input');
+  const titleInput = document.getElementById('stat-name-input');
 
-function selectStatMech(modeKey) {
-  selectedStatMode = modeKey;
-  document.querySelectorAll('#view-statmech .reactor-mode').forEach(m => {
-    m.classList.toggle('active', m.getAttribute('data-stat') === modeKey);
-  });
-  executeStatMechEval();
+  if (presetKey === 'ideal_gas') {
+    partInput.value = '(V / h^3) * (2*pi*m*k_B*T)^(3/2)';
+    titleInput.value = 'Classical Monatomic Ideal Gas (Sackur-Tetrode)';
+  } else if (presetKey === 'paramagnet') {
+    partInput.value = '2 * cosh(mu_B * B / (k_B * T))^N';
+    titleInput.value = 'Paramagnet in Magnetic Field (Curie Law)';
+  } else if (presetKey === 'quantum_oscillator') {
+    partInput.value = 'exp(-hbar*omega / (2*k_B*T)) / (1 - exp(-hbar*omega / (k_B*T)))';
+    titleInput.value = 'Quantum Harmonic Oscillator (Einstein Solid)';
+  } else if (presetKey === 'two_level') {
+    partInput.value = '1 + exp(-epsilon / (k_B * T))';
+    titleInput.value = 'Two-Level Quantum System';
+  } else if (presetKey === 'distributions') {
+    selectStatPresetStandard('distributions');
+    return;
+  }
+  executeCustomStatMechEval();
 }
 
-async function executeStatMechEval() {
+async function selectStatPresetStandard(modeKey) {
   const stage = document.getElementById('stat-content-stage');
-  stage.innerHTML = '<div class="canvas-loading-state"><div class="reactor-spinner"><div class="reactor-core"></div></div><div class="loading-label">Evaluating Partition Function Derivations...</div></div>';
-
+  stage.innerHTML = '<div class="canvas-loading-state"><div class="reactor-spinner"><div class="reactor-core"></div></div><div class="loading-label">Evaluating Quantum Distributions & Planck Law...</div></div>';
   try {
     const res = await fetch('/api/statmech/eval', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: selectedStatMode })
+      body: JSON.stringify({ mode: modeKey })
     });
     const data = await res.json();
     stage.innerHTML = `
       <div class="derived-banner">
-        <div class="verified-tag"><i data-lucide="flame"></i> ${data.model_name || data.distribution_name}</div>
+        <div class="verified-tag"><i data-lucide="bar-chart-2"></i> ${data.distribution_name}</div>
         <div class="math-hero" id="stat-hero-math"></div>
       </div>
       <div class="dag-container"><div class="dag-steps">
         <div class="dag-node">
-          <div class="dag-node-header"><span class="step-order-badge">Free Energy</span><span class="step-op-title">Helmholtz Potential $F$</span></div>
+          <div class="dag-node-header"><span class="step-op-title">Planck Blackbody Radiation Spectrum</span></div>
+          <div class="dag-formula-box" id="stat-box-planck"></div>
+        </div>
+      </div></div>
+    `;
+    katex.render(data.occupancy_formula_latex, document.getElementById('stat-hero-math'), { displayMode: true, throwOnError: false });
+    katex.render(data.planck_radiation_law_latex || '', document.getElementById('stat-box-planck'), { displayMode: true, throwOnError: false });
+    lucide.createIcons();
+  } catch (e) {
+    stage.innerHTML = `<div class="canvas-empty-state"><p style="color: var(--plasma-crimson)">${e.message}</p></div>`;
+  }
+}
+
+async function executeCustomStatMechEval() {
+  const stage = document.getElementById('stat-content-stage');
+  stage.innerHTML = '<div class="canvas-loading-state"><div class="reactor-spinner"><div class="reactor-core"></div></div><div class="loading-label">Deducing Exact Thermodynamic Potentials F, S, U, P, Cv, M...</div></div>';
+
+  const part = document.getElementById('stat-partition-input').value;
+  const name = document.getElementById('stat-name-input').value;
+
+  try {
+    const res = await fetch('/api/statmech/custom', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ partition_function: part, model_name: name })
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Failed');
+    const data = await res.json();
+
+    stage.innerHTML = `
+      <div class="derived-banner">
+        <div class="verified-tag"><i data-lucide="flame"></i> ${data.model_name}</div>
+        <div class="math-hero" id="stat-hero-math"></div>
+      </div>
+      <div class="dag-container"><div class="dag-steps">
+        <div class="dag-node">
+          <div class="dag-node-header"><span class="step-order-badge">Free Energy</span><span class="step-op-title">Helmholtz Potential $F = -k_B T \\ln\\mathcal{Z}$</span></div>
           <div class="dag-formula-box" id="stat-box-F"></div>
         </div>
         <div class="dag-node">
@@ -1375,17 +1608,10 @@ async function executeStatMechEval() {
         </div>
       </div></div>
     `;
-    if (data.partition_function_latex) {
-      katex.render(data.partition_function_latex, document.getElementById('stat-hero-math'), { displayMode: true, throwOnError: false });
-      katex.render(data.free_energy_F_latex, document.getElementById('stat-box-F'), { displayMode: true, throwOnError: false });
-      katex.render(data.entropy_S_latex, document.getElementById('stat-box-S'), { displayMode: true, throwOnError: false });
-      katex.render(`${data.internal_energy_U_latex}, \\quad C_v = ${data.heat_capacity_Cv_latex}`, document.getElementById('stat-box-U'), { displayMode: true, throwOnError: false });
-    } else {
-      katex.render(data.occupancy_formula_latex, document.getElementById('stat-hero-math'), { displayMode: true, throwOnError: false });
-      katex.render(data.classical_limit_latex, document.getElementById('stat-box-F'), { displayMode: true, throwOnError: false });
-      katex.render(data.planck_radiation_law_latex || '', document.getElementById('stat-box-S'), { displayMode: true, throwOnError: false });
-      katex.render(data.stefan_boltzmann_law_latex || '', document.getElementById('stat-box-U'), { displayMode: true, throwOnError: false });
-    }
+    katex.render(`\\mathcal{Z} = ${data.partition_function_latex}`, document.getElementById('stat-hero-math'), { displayMode: true, throwOnError: false });
+    katex.render(`F = ${data.free_energy_F_latex}`, document.getElementById('stat-box-F'), { displayMode: true, throwOnError: false });
+    katex.render(`S = ${data.entropy_S_latex}`, document.getElementById('stat-box-S'), { displayMode: true, throwOnError: false });
+    katex.render(`U = ${data.internal_energy_U_latex}, \\quad C_v = ${data.heat_capacity_Cv_latex}`, document.getElementById('stat-box-U'), { displayMode: true, throwOnError: false });
     lucide.createIcons();
   } catch (e) {
     stage.innerHTML = `<div class="canvas-empty-state"><p style="color: var(--plasma-crimson)">${e.message}</p></div>`;
