@@ -884,6 +884,514 @@ async function executeTensorCurvature() {
   }
 }
 
+/* ================= NUMERICAL SIMULATION & CANVASES ================= */
+let simAnimationId = null;
+let simIsPlaying = true;
+let simCurrentFrame = 0;
+let simTrajectoryData = null;
+let selectedSimPreset = 'pendulum';
+
+function loadSimPreset(presetKey) {
+  selectedSimPreset = presetKey;
+  const accelInput = document.getElementById('sim-accel-input');
+  const q0Input = document.getElementById('sim-q0-input');
+  const v0Input = document.getElementById('sim-v0-input');
+
+  if (presetKey === 'pendulum') {
+    accelInput.value = '-9.81 * sin(theta)';
+    q0Input.value = '1.5';
+    v0Input.value = '0.0';
+  } else if (presetKey === 'harmonic') {
+    accelInput.value = '-4.0 * x';
+    q0Input.value = '1.0';
+    v0Input.value = '0.0';
+  } else if (presetKey === 'quantum') {
+    accelInput.value = 'Quantum Wave Tunneling (Split-Operator FFT)';
+  } else if (presetKey === 'orbit') {
+    accelInput.value = 'Schwarzschild Geodesic Ray Tracer';
+  }
+  executeSimulation();
+}
+
+async function executeSimulation() {
+  if (simAnimationId) cancelAnimationFrame(simAnimationId);
+
+  const canvas = document.getElementById('sim-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (selectedSimPreset === 'quantum') {
+    try {
+      const res = await fetch('/api/sim/quantum-wave', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ barrier_type: 'barrier', barrier_height: 4.0, p0: 3.0 })
+      });
+      const data = await res.json();
+      renderQuantumWaveFrames(data);
+    } catch (e) {
+      alert('Quantum Sim Error: ' + e.message);
+    }
+    return;
+  }
+
+  if (selectedSimPreset === 'orbit') {
+    try {
+      const res = await fetch('/api/sim/relativity-orbit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'particle', r0: 12.0, v_phi0: 0.28 })
+      });
+      const data = await res.json();
+      renderOrbitTrajectory(data);
+    } catch (e) {
+      alert('Relativistic Orbit Error: ' + e.message);
+    }
+    return;
+  }
+
+  // Standard numerical simulation & phase portrait
+  const accel = document.getElementById('sim-accel-input').value;
+  const q0 = parseFloat(document.getElementById('sim-q0-input').value) || 1.0;
+  const v0 = parseFloat(document.getElementById('sim-v0-input').value) || 0.0;
+
+  try {
+    const res = await fetch('/api/sim/phase-portrait', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        accel_expr: accel,
+        coord_name: 'theta',
+        q0: q0,
+        v0: v0,
+        t_end: 10.0,
+        dt: 0.02
+      })
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Failed');
+    const data = await res.json();
+    simTrajectoryData = data;
+    simCurrentFrame = 0;
+    simIsPlaying = true;
+    animatePhaseSpace(data);
+  } catch (e) {
+    alert('Simulation Error: ' + e.message);
+  }
+}
+
+function animatePhaseSpace(data) {
+  const canvas = document.getElementById('sim-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+
+  const trajQ = data.q_values || [];
+  const trajV = data.p_values || [];
+  const totalPoints = trajQ.length;
+
+  function draw() {
+    ctx.fillStyle = 'rgba(6, 9, 18, 0.25)';
+    ctx.fillRect(0, 0, w, h);
+
+    // Draw Vector Field arrows
+    ctx.strokeStyle = 'rgba(99, 102, 241, 0.2)';
+    ctx.lineWidth = 1;
+    if (data.grid_q && data.grid_p) {
+      const qGrid = data.grid_q;
+      const vGrid = data.grid_p;
+      const dq = data.grid_dq;
+      const dv = data.grid_dp;
+
+      for (let i = 0; i < qGrid.length; i += 2) {
+        for (let j = 0; j < vGrid.length; j += 2) {
+          const cx = w / 2 + qGrid[i] * 50;
+          const cy = h / 2 - vGrid[j] * 35;
+          const u = (dq[j] ? dq[j][i] : 0) * 0.08;
+          const v = (dv[j] ? dv[j][i] : 0) * 0.08;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx + u, cy - v);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Draw full trajectory path
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(0, 242, 254, 0.4)';
+    ctx.lineWidth = 2;
+    for (let i = 0; i <= simCurrentFrame && i < trajQ.length; i++) {
+      const px = w / 2 + trajQ[i] * 65;
+      const py = h / 2 - trajV[i] * 40;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    // Draw current particle head
+    if (simCurrentFrame < trajQ.length) {
+      const px = w / 2 + trajQ[simCurrentFrame] * 65;
+      const py = h / 2 - trajV[simCurrentFrame] * 40;
+      ctx.beginPath();
+      ctx.arc(px, py, 6, 0, 2 * Math.PI);
+      ctx.fillStyle = '#00f2fe';
+      ctx.shadowColor = '#00f2fe';
+      ctx.shadowBlur = 12;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Update HUD
+      document.getElementById('sim-hud-time').textContent = `Step ${simCurrentFrame + 1}/${totalPoints}`;
+      document.getElementById('sim-hud-pos').textContent = trajQ[simCurrentFrame].toFixed(3);
+      document.getElementById('sim-hud-vel').textContent = trajV[simCurrentFrame].toFixed(3);
+    }
+
+    if (simIsPlaying) {
+      simCurrentFrame = (simCurrentFrame + 1) % trajQ.length;
+    }
+    simAnimationId = requestAnimationFrame(draw);
+  }
+
+  draw();
+}
+
+function renderQuantumWaveFrames(data) {
+  const canvas = document.getElementById('sim-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+  const xVals = data.x;
+  const probFrames = data.probability_density_history;
+  let frameIdx = 0;
+
+  function drawWave() {
+    ctx.fillStyle = 'rgba(6, 9, 18, 0.2)';
+    ctx.fillRect(0, 0, w, h);
+
+    // Draw Potential Barrier
+    ctx.fillStyle = 'rgba(255, 65, 108, 0.25)';
+    ctx.fillRect(w / 2 - 15, h / 2 - 80, 30, 80);
+
+    const probs = probFrames[frameIdx];
+    ctx.beginPath();
+    ctx.strokeStyle = '#00f2fe';
+    ctx.lineWidth = 2.5;
+    for (let i = 0; i < xVals.length; i++) {
+      const cx = (xVals[i] + 8) / 16 * w;
+      const cy = h / 2 + 50 - probs[i] * 120;
+      if (i === 0) ctx.moveTo(cx, cy);
+      else ctx.lineTo(cx, cy);
+    }
+    ctx.stroke();
+
+    document.getElementById('sim-hud-time').textContent = `Frame ${frameIdx + 1}/${probFrames.length}`;
+    document.getElementById('sim-hud-pos').textContent = `T = ${(data.transmission_coefficient * 100).toFixed(1)}%`;
+    document.getElementById('sim-hud-vel').textContent = `R = ${(data.reflection_coefficient * 100).toFixed(1)}%`;
+
+    if (simIsPlaying) {
+      frameIdx = (frameIdx + 1) % probFrames.length;
+    }
+    simAnimationId = requestAnimationFrame(drawWave);
+  }
+
+  drawWave();
+}
+
+function renderOrbitTrajectory(data) {
+  const canvas = document.getElementById('sim-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+  const xs = data.x_cartesian || [];
+  const ys = data.y_cartesian || [];
+  let idx = 0;
+
+  function drawOrbit() {
+    ctx.fillStyle = 'rgba(6, 9, 18, 0.2)';
+    ctx.fillRect(0, 0, w, h);
+
+    // Black Hole Event Horizon r = 2M
+    ctx.beginPath();
+    ctx.arc(w / 2, h / 2, 16, 0, 2 * Math.PI);
+    ctx.fillStyle = '#000000';
+    ctx.strokeStyle = '#ffb703';
+    ctx.lineWidth = 2;
+    ctx.fill();
+    ctx.stroke();
+
+    // Orbit path
+    ctx.beginPath();
+    ctx.strokeStyle = '#a855f7';
+    ctx.lineWidth = 2;
+    for (let i = 0; i <= idx && i < xs.length; i++) {
+      const px = w / 2 + xs[i] * 12;
+      const py = h / 2 - ys[i] * 12;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    if (idx < xs.length) {
+      const px = w / 2 + xs[idx] * 12;
+      const py = h / 2 - ys[idx] * 12;
+      ctx.beginPath();
+      ctx.arc(px, py, 4, 0, 2 * Math.PI);
+      ctx.fillStyle = '#00f2fe';
+      ctx.fill();
+    }
+
+    if (simIsPlaying) {
+      idx = (idx + 1) % xs.length;
+    }
+    simAnimationId = requestAnimationFrame(drawOrbit);
+  }
+
+  drawOrbit();
+}
+
+function toggleSimPlayPause() {
+  simIsPlaying = !simIsPlaying;
+  const btn = document.getElementById('btn-sim-play-pause');
+  btn.innerHTML = simIsPlaying ? '<i data-lucide="pause"></i> Pause' : '<i data-lucide="play"></i> Play';
+  lucide.createIcons();
+}
+
+function resetSimCanvas() {
+  simCurrentFrame = 0;
+}
+
+/* ================= QFT & FEYNMAN LAB ================= */
+let selectedQFT = 'ee_to_mumu';
+
+function selectQFTProcess(key) {
+  selectedQFT = key;
+  document.querySelectorAll('#view-qft .reactor-mode').forEach(m => {
+    m.classList.toggle('active', m.getAttribute('data-qft') === key);
+  });
+  executeQFTEval();
+}
+
+async function executeQFTEval() {
+  const emptyState = document.getElementById('qft-empty-state');
+  const stage = document.getElementById('qft-content-stage');
+  emptyState.classList.add('hidden');
+  stage.innerHTML = '<div class="canvas-loading-state"><div class="reactor-spinner"><div class="reactor-core"></div></div><div class="loading-label">Evaluating Feynman Scattering Amplitudes & Trace Identities...</div></div>';
+  stage.classList.remove('hidden');
+
+  try {
+    if (selectedQFT === 'dirac') {
+      const res = await fetch('/api/qft/dirac', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ representation: 'dirac' })
+      });
+      const data = await res.json();
+      stage.innerHTML = `
+        <div class="derived-banner">
+          <div class="verified-tag"><i data-lucide="shield"></i> CLIFFORD ALGEBRA VALID: ${data.clifford_anticommutators_valid}</div>
+          <div class="tag-domain">Dirac Spinor Representation</div>
+        </div>
+        <div class="dag-container"><div class="dag-steps">
+          <div class="dag-node">
+            <div class="dag-node-header"><span class="step-op-title">Gamma Matrices & Chiral $\\gamma^5$</span></div>
+            <div class="dag-formula-box" id="qft-g0"></div>
+          </div>
+          <div class="dag-node">
+            <div class="dag-node-header"><span class="step-op-title">Spinor Completeness Relations</span></div>
+            <div class="dag-formula-box" id="qft-spin-sum"></div>
+          </div>
+        </div></div>
+      `;
+      katex.render(`\\gamma^0 = ${data.gamma_matrices_latex['\\gamma^0']}, \\quad \\gamma^5 = ${data.gamma5_latex}`, document.getElementById('qft-g0'), { displayMode: true, throwOnError: false });
+      katex.render(data.spin_sum_u_latex, document.getElementById('qft-spin-sum'), { displayMode: true, throwOnError: false });
+    } else {
+      const res = await fetch('/api/qft/feynman', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ process: selectedQFT })
+      });
+      const data = await res.json();
+      stage.innerHTML = `
+        <div class="derived-banner">
+          <div class="derived-banner-header">
+            <div class="verified-tag"><i data-lucide="sparkles"></i> ${data.process_name}</div>
+            <div class="tag-domain">${data.channel}</div>
+          </div>
+          <div style="margin-top: 1rem;">${data.svg_diagram || ''}</div>
+        </div>
+        <div class="dag-container"><div class="dag-steps">
+          <div class="dag-node">
+            <div class="dag-node-header"><span class="step-order-badge">Amplitude</span><span class="step-op-title">Feynman Matrix Element $\\mathcal{M}$</span></div>
+            <div class="dag-formula-box" id="qft-matrix-elem"></div>
+          </div>
+          <div class="dag-node">
+            <div class="dag-node-header"><span class="step-order-badge">Cross Section</span><span class="step-op-title">Unpolarized Squared Amplitude $|\\overline{\\mathcal{M}}|^2$</span></div>
+            <div class="dag-formula-box" id="qft-sq-matrix"></div>
+          </div>
+          <div class="dag-node">
+            <div class="dag-node-header"><span class="step-order-badge">Differential</span><span class="step-op-title">Differential Cross Section $\\frac{d\\sigma}{d\\Omega}$</span></div>
+            <div class="dag-formula-box" id="qft-diff-sigma"></div>
+          </div>
+        </div></div>
+      `;
+      katex.render(data.matrix_element_latex, document.getElementById('qft-matrix-elem'), { displayMode: true, throwOnError: false });
+      katex.render(data.squared_matrix_element_unpolarized_latex, document.getElementById('qft-sq-matrix'), { displayMode: true, throwOnError: false });
+      katex.render(data.differential_cross_section_latex, document.getElementById('qft-diff-sigma'), { displayMode: true, throwOnError: false });
+    }
+    lucide.createIcons();
+  } catch (e) {
+    stage.innerHTML = `<div class="canvas-empty-state"><p style="color: var(--plasma-crimson)">${e.message}</p></div>`;
+  }
+}
+
+/* ================= DIFFERENTIAL FORMS ================= */
+async function executeGeometricMaxwell() {
+  const stage = document.getElementById('forms-content-stage');
+  stage.innerHTML = '<div class="canvas-loading-state"><div class="reactor-spinner"><div class="reactor-core"></div></div><div class="loading-label">Evaluating Exterior Derivatives & Hodge Duals...</div></div>';
+
+  try {
+    const res = await fetch('/api/geometry/maxwell', { method: 'POST' });
+    const data = await res.json();
+    stage.innerHTML = `
+      <div class="derived-banner">
+        <div class="verified-tag"><i data-lucide="triangle"></i> EXACT TOPOLOGICAL CLOSURE: dF = d(dA) = 0</div>
+        <div class="math-hero" id="forms-hero-A"></div>
+      </div>
+      <div class="dag-container"><div class="dag-steps">
+        <div class="dag-node">
+          <div class="dag-node-header"><span class="step-order-badge">2-Form</span><span class="step-op-title">Field Strength $F = dA$</span></div>
+          <div class="dag-formula-box" id="forms-F-elem"></div>
+        </div>
+        <div class="dag-node">
+          <div class="dag-node-header"><span class="step-order-badge">Homogeneous</span><span class="step-op-title">Bianchi Identity ($dF = 0$)</span></div>
+          <div class="dag-formula-box" id="forms-dF-elem"></div>
+        </div>
+        <div class="dag-node">
+          <div class="dag-node-header"><span class="step-order-badge">Inhomogeneous</span><span class="step-op-title">Source Coupling ($d\\star F = \\mu_0 \\star J$)</span></div>
+          <div class="dag-formula-box" id="forms-dstar-elem"></div>
+        </div>
+      </div></div>
+    `;
+    katex.render(data.potential_1form_latex, document.getElementById('forms-hero-A'), { displayMode: true, throwOnError: false });
+    katex.render(data.field_strength_2form_latex, document.getElementById('forms-F-elem'), { displayMode: true, throwOnError: false });
+    katex.render(data.homogeneous_maxwell_latex, document.getElementById('forms-dF-elem'), { displayMode: true, throwOnError: false });
+    katex.render(data.inhomogeneous_maxwell_latex, document.getElementById('forms-dstar-elem'), { displayMode: true, throwOnError: false });
+    lucide.createIcons();
+  } catch (e) {
+    stage.innerHTML = `<div class="canvas-empty-state"><p style="color: var(--plasma-crimson)">${e.message}</p></div>`;
+  }
+}
+
+/* ================= SYMMETRIES & HIGGS ================= */
+let selectedSymmetryMode = 'su2';
+
+function selectSymmetry(modeKey) {
+  selectedSymmetryMode = modeKey;
+  document.querySelectorAll('#view-symmetry .reactor-mode').forEach(m => {
+    m.classList.toggle('active', m.getAttribute('data-sym') === modeKey);
+  });
+  executeSymmetryEval();
+}
+
+async function executeSymmetryEval() {
+  const stage = document.getElementById('sym-content-stage');
+  stage.innerHTML = '<div class="canvas-loading-state"><div class="reactor-spinner"><div class="reactor-core"></div></div><div class="loading-label">Evaluating Lie Commutators & Gauge Invariance...</div></div>';
+
+  try {
+    const res = await fetch('/api/symmetry/eval', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: selectedSymmetryMode })
+    });
+    const data = await res.json();
+    stage.innerHTML = `
+      <div class="derived-banner">
+        <div class="verified-tag"><i data-lucide="network"></i> ${data.gauge_group || data.group_name}</div>
+        <div class="math-hero" id="sym-hero-math"></div>
+      </div>
+      <div class="dag-container"><div class="dag-steps">
+        <div class="dag-node">
+          <div class="dag-node-header"><span class="step-op-title">Algebra Invariants & Commutators</span></div>
+          <div class="dag-formula-box" id="sym-box-1"></div>
+        </div>
+      </div></div>
+    `;
+    if (data.casimir_operator_latex) {
+      katex.render(`C_2 = ${data.casimir_operator_latex}`, document.getElementById('sym-hero-math'), { displayMode: true, throwOnError: false });
+      katex.render(data.commutation_relations_latex ? data.commutation_relations_latex[0] : '', document.getElementById('sym-box-1'), { displayMode: true, throwOnError: false });
+    } else if (data.covariant_derivative_latex) {
+      katex.render(data.covariant_derivative_latex, document.getElementById('sym-hero-math'), { displayMode: true, throwOnError: false });
+      katex.render(data.field_strength_tensor_latex, document.getElementById('sym-box-1'), { displayMode: true, throwOnError: false });
+    }
+    lucide.createIcons();
+  } catch (e) {
+    stage.innerHTML = `<div class="canvas-empty-state"><p style="color: var(--plasma-crimson)">${e.message}</p></div>`;
+  }
+}
+
+/* ================= STATISTICAL MECHANICS ================= */
+let selectedStatMode = 'ideal_gas';
+
+function selectStatMech(modeKey) {
+  selectedStatMode = modeKey;
+  document.querySelectorAll('#view-statmech .reactor-mode').forEach(m => {
+    m.classList.toggle('active', m.getAttribute('data-stat') === modeKey);
+  });
+  executeStatMechEval();
+}
+
+async function executeStatMechEval() {
+  const stage = document.getElementById('stat-content-stage');
+  stage.innerHTML = '<div class="canvas-loading-state"><div class="reactor-spinner"><div class="reactor-core"></div></div><div class="loading-label">Evaluating Partition Function Derivations...</div></div>';
+
+  try {
+    const res = await fetch('/api/statmech/eval', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: selectedStatMode })
+    });
+    const data = await res.json();
+    stage.innerHTML = `
+      <div class="derived-banner">
+        <div class="verified-tag"><i data-lucide="flame"></i> ${data.model_name || data.distribution_name}</div>
+        <div class="math-hero" id="stat-hero-math"></div>
+      </div>
+      <div class="dag-container"><div class="dag-steps">
+        <div class="dag-node">
+          <div class="dag-node-header"><span class="step-order-badge">Free Energy</span><span class="step-op-title">Helmholtz Potential $F$</span></div>
+          <div class="dag-formula-box" id="stat-box-F"></div>
+        </div>
+        <div class="dag-node">
+          <div class="dag-node-header"><span class="step-order-badge">Entropy</span><span class="step-op-title">Entropy $S = -\\partial F / \\partial T$</span></div>
+          <div class="dag-formula-box" id="stat-box-S"></div>
+        </div>
+        <div class="dag-node">
+          <div class="dag-node-header"><span class="step-order-badge">Energy</span><span class="step-op-title">Internal Energy $U$ & Heat Capacity $C_v$</span></div>
+          <div class="dag-formula-box" id="stat-box-U"></div>
+        </div>
+      </div></div>
+    `;
+    if (data.partition_function_latex) {
+      katex.render(data.partition_function_latex, document.getElementById('stat-hero-math'), { displayMode: true, throwOnError: false });
+      katex.render(data.free_energy_F_latex, document.getElementById('stat-box-F'), { displayMode: true, throwOnError: false });
+      katex.render(data.entropy_S_latex, document.getElementById('stat-box-S'), { displayMode: true, throwOnError: false });
+      katex.render(`${data.internal_energy_U_latex}, \\quad C_v = ${data.heat_capacity_Cv_latex}`, document.getElementById('stat-box-U'), { displayMode: true, throwOnError: false });
+    } else {
+      katex.render(data.occupancy_formula_latex, document.getElementById('stat-hero-math'), { displayMode: true, throwOnError: false });
+      katex.render(data.classical_limit_latex, document.getElementById('stat-box-F'), { displayMode: true, throwOnError: false });
+      katex.render(data.planck_radiation_law_latex || '', document.getElementById('stat-box-S'), { displayMode: true, throwOnError: false });
+      katex.render(data.stefan_boltzmann_law_latex || '', document.getElementById('stat-box-U'), { displayMode: true, throwOnError: false });
+    }
+    lucide.createIcons();
+  } catch (e) {
+    stage.innerHTML = `<div class="canvas-empty-state"><p style="color: var(--plasma-crimson)">${e.message}</p></div>`;
+  }
+}
+
 /* ================= EXPORT HELPERS ================= */
 async function downloadAcademicPaper() {
   if (!currentDerivationResult) {
@@ -935,4 +1443,5 @@ function copyPythonProof() {
   const code = `import sympy as sp\n\n# Target: ${currentDerivationResult.target_variable}\n# Final Formula: ${currentDerivationResult.final_equation}\nprint("Derived:", "${currentDerivationResult.final_equation}")`;
   navigator.clipboard.writeText(code).then(() => alert('Python SymPy snippet copied to clipboard!'));
 }
+
 

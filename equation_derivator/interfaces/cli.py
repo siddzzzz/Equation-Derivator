@@ -306,6 +306,104 @@ def handle_paper(args):
         console.print(f"[bold red]Paper Generation Error:[/bold red] {e}")
 
 
+def handle_sim(args):
+    print_banner()
+    from equation_derivator.simulation.integrator import simulate_symbolic_system
+    coords = [c.strip() for c in args.coords.split(",") if c.strip()]
+    q0_vals = [float(x.strip()) for x in args.q0.split(",") if x.strip()]
+    v0_vals = [float(x.strip()) for x in args.v0.split(",") if x.strip()]
+    accels = {c: a.strip() for c, a in zip(coords, args.accel.split(";"))}
+    pos0 = {c: q0_vals[i] if i < len(q0_vals) else 0.0 for i, c in enumerate(coords)}
+    vel0 = {c: v0_vals[i] if i < len(v0_vals) else 0.0 for i, c in enumerate(coords)}
+
+    console.print(f"[bold cyan]Integrating Dynamical System: {args.name}...[/bold cyan]")
+    traj = simulate_symbolic_system(
+        accelerations=accels,
+        coordinates=coords,
+        initial_positions=pos0,
+        initial_velocities=vel0,
+        t_end=args.t_end,
+        dt=args.dt,
+        system_name=args.name
+    )
+
+    table = Table(title=f"Numerical Trajectory (First 8 Steps): {args.name}", border_style="cyan")
+    table.add_column("Time t (s)", style="bold yellow")
+    for c in coords:
+        table.add_column(f"q: {c}", style="green")
+        table.add_column(f"v: {c}_dot", style="magenta")
+
+    for i in range(min(8, len(traj.time))):
+        row = [f"{traj.time[i]:.3f}"]
+        for c in coords:
+            row.append(f"{traj.positions[c][i]:.4f}")
+            row.append(f"{traj.velocities[c][i]:.4f}")
+        table.add_row(*row)
+
+    console.print(table)
+    console.print(f"[dim]Total simulated points: {len(traj.time)} across [0, {args.t_end}] s[/dim]")
+
+
+def handle_qft(args):
+    print_banner()
+    if args.representation:
+        from equation_derivator.qft.dirac import evaluate_dirac_equation
+        res = evaluate_dirac_equation(representation=args.representation)
+        console.print(Markdown(res.markdown))
+    else:
+        from equation_derivator.qft.feynman import QEDScatteringProcess
+        res = QEDScatteringProcess.evaluate(args.process)
+        console.print(Markdown(res.markdown))
+
+
+def handle_forms(args):
+    print_banner()
+    from equation_derivator.geometry.maxwell_forms import GeometricMaxwellEngine
+    engine = GeometricMaxwellEngine()
+    res = engine.build_electrodynamics()
+    console.print(Markdown(res.markdown))
+
+
+def handle_symmetry(args):
+    print_banner()
+    mode = args.group.lower()
+    if mode == "su2":
+        from equation_derivator.symmetry.lie_algebra import SU2Algebra
+        res = SU2Algebra().evaluate()
+        console.print(Markdown(res.markdown))
+    elif mode == "su3":
+        from equation_derivator.symmetry.lie_algebra import SU3Algebra
+        res = SU3Algebra().evaluate()
+        console.print(Markdown(res.markdown))
+    elif mode == "higgs":
+        from equation_derivator.symmetry.gauge import HiggsMechanismEngine
+        res = HiggsMechanismEngine().evaluate_electroweak_breaking()
+        console.print(Markdown(res.markdown))
+    else:
+        from equation_derivator.symmetry.gauge import YangMillsGaugeEngine
+        res = YangMillsGaugeEngine().evaluate_yang_mills("SU(2)")
+        console.print(Markdown(res.markdown))
+
+
+def handle_statmech(args):
+    print_banner()
+    from equation_derivator.statmech.partition import PartitionFunctionEngine
+    from equation_derivator.statmech.distributions import QuantumDistributionEngine
+    engine = PartitionFunctionEngine()
+    if args.model == "ideal_gas":
+        res = engine.evaluate_ideal_gas()
+        console.print(Markdown(res.markdown))
+    elif args.model == "quantum_oscillator":
+        res = engine.evaluate_quantum_harmonic_oscillator()
+        console.print(Markdown(res.markdown))
+    elif args.model == "distributions":
+        res = QuantumDistributionEngine().evaluate_distributions()
+        console.print(Markdown(res.markdown))
+    elif args.partition:
+        res = engine.derive_from_Z(args.partition, model_name=args.name or "Custom Ensemble")
+        console.print(Markdown(res.markdown))
+
+
 def handle_serve(args):
     print_banner()
     import uvicorn
@@ -350,6 +448,34 @@ def main():
     p_tens = subparsers.add_parser("tensor", help="Compute General Relativity spacetime curvature tensors")
     p_tens.add_argument("--metric", choices=["schwarzschild", "flrw", "minkowski"], default="schwarzschild", help="Spacetime metric")
 
+    # sim
+    p_sim = subparsers.add_parser("sim", help="Run numerical RK4 trajectory simulation on symbolic equations")
+    p_sim.add_argument("--accel", "-a", required=True, help="Symbolic acceleration (e.g. '-g/L*sin(theta)')")
+    p_sim.add_argument("--coords", "-c", default="theta", help="Comma-separated coordinates")
+    p_sim.add_argument("--q0", default="0.5", help="Initial positions (e.g. '0.5')")
+    p_sim.add_argument("--v0", default="0.0", help="Initial velocities (e.g. '0.0')")
+    p_sim.add_argument("--t-end", type=float, default=5.0, help="Simulation duration (s)")
+    p_sim.add_argument("--dt", type=float, default=0.01, help="Time step dt")
+    p_sim.add_argument("--name", default="Dynamical System", help="System title")
+
+    # qft
+    p_qft = subparsers.add_parser("qft", help="Evaluate Dirac spinors, gamma matrices, and Feynman QED scattering")
+    p_qft.add_argument("--representation", "-r", choices=["dirac", "weyl", "majorana"], help="Dirac matrix representation")
+    p_qft.add_argument("--process", "-p", choices=["ee_to_mumu", "compton"], default="ee_to_mumu", help="QED scattering process")
+
+    # forms
+    p_forms = subparsers.add_parser("forms", help="Evaluate differential forms and geometric Maxwell electrodynamics")
+
+    # symmetry
+    p_sym = subparsers.add_parser("symmetry", help="Evaluate Lie algebras, Yang-Mills fields, and Higgs mechanism")
+    p_sym.add_argument("--group", "-g", choices=["su2", "su3", "yang_mills", "higgs"], default="su2", help="Symmetry group / model")
+
+    # statmech
+    p_stat = subparsers.add_parser("statmech", help="Derive thermodynamic potentials from partition functions")
+    p_stat.add_argument("--model", "-m", choices=["ideal_gas", "quantum_oscillator", "distributions"], default="ideal_gas", help="Ensemble model")
+    p_stat.add_argument("--partition", "-z", help="Custom partition function Z(T, V, N)")
+    p_stat.add_argument("--name", default="Custom Statistical Ensemble", help="Model name")
+
     # ask
     p_ask = subparsers.add_parser("ask", help="Natural language physics query dispatcher")
     p_ask.add_argument("--query", "-q", required=True, help="Natural language physics question")
@@ -387,6 +513,16 @@ def main():
         handle_diff_eq(args)
     elif args.command == "tensor":
         handle_tensor(args)
+    elif args.command == "sim":
+        handle_sim(args)
+    elif args.command == "qft":
+        handle_qft(args)
+    elif args.command == "forms":
+        handle_forms(args)
+    elif args.command == "symmetry":
+        handle_symmetry(args)
+    elif args.command == "statmech":
+        handle_statmech(args)
     elif args.command == "ask":
         handle_ask(args)
     elif args.command == "paper":
@@ -403,3 +539,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

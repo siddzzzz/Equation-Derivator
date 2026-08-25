@@ -80,6 +80,62 @@ class PaperRequest(BaseModel):
     title: Optional[str] = None
 
 
+class SimulateRequest(BaseModel):
+    accelerations: Dict[str, str]
+    coordinates: List[str]
+    initial_positions: Dict[str, float]
+    initial_velocities: Dict[str, float]
+    parameters: Optional[Dict[str, float]] = None
+    t_end: Optional[float] = 10.0
+    dt: Optional[float] = 0.02
+    system_name: Optional[str] = "Symbolic Dynamical System"
+
+
+class PhaseSpaceRequest(BaseModel):
+    accel_expr: str
+    coord_name: Optional[str] = "x"
+    params: Optional[Dict[str, float]] = None
+    q0: Optional[float] = 1.0
+    v0: Optional[float] = 0.0
+    t_end: Optional[float] = 8.0
+    dt: Optional[float] = 0.02
+    potential_expr: Optional[str] = None
+
+
+class QuantumWaveRequest(BaseModel):
+    barrier_type: Optional[str] = "barrier"  # "barrier", "harmonic", "step"
+    barrier_height: Optional[float] = 4.0
+    barrier_width: Optional[float] = 0.5
+    barrier_center: Optional[float] = 0.0
+    p0: Optional[float] = 3.0
+    sigma: Optional[float] = 0.5
+
+
+class RelativityOrbitRequest(BaseModel):
+    mode: Optional[str] = "particle"  # "particle" or "photon"
+    r0: Optional[float] = 12.0
+    v_phi0: Optional[float] = 0.28
+    impact_parameter_b: Optional[float] = 6.0
+
+
+class QFTRequest(BaseModel):
+    representation: Optional[str] = "dirac"  # "dirac", "weyl", "majorana"
+
+
+class FeynmanRequest(BaseModel):
+    process: Optional[str] = "ee_to_mumu"  # "ee_to_mumu" or "compton"
+
+
+class SymmetryRequest(BaseModel):
+    mode: Optional[str] = "su2"  # "su2", "su3", "yang_mills", "higgs"
+
+
+class StatMechRequest(BaseModel):
+    mode: Optional[str] = "ideal_gas"  # "ideal_gas", "quantum_oscillator", "distributions", "custom"
+    partition_function: Optional[str] = None
+    model_name: Optional[str] = "Custom Statistical Ensemble"
+
+
 # Endpoints
 @app.get("/api/health")
 def health_check():
@@ -121,7 +177,6 @@ def derive_equation(req: DeriveRequest):
     engine = DerivationEngine(GLOBAL_KNOWLEDGE_BASE)
     try:
         if req.target.lower() == "w" and any("v_f" in v or "delta k" in v.lower() for v in req.in_terms_of):
-            # Special work-energy calculus template
             res = engine.derive_work_energy_theorem()
         else:
             res = engine.derive(
@@ -249,6 +304,173 @@ def tensor_endpoint(req: TensorRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.post("/api/sim/simulate")
+def simulate_endpoint(req: SimulateRequest):
+    from equation_derivator.simulation.integrator import simulate_symbolic_system
+    try:
+        traj = simulate_symbolic_system(
+            accelerations=req.accelerations,
+            coordinates=req.coordinates,
+            initial_positions=req.initial_positions,
+            initial_velocities=req.initial_velocities,
+            parameters=req.parameters,
+            t_end=req.t_end or 10.0,
+            dt=req.dt or 0.02,
+            system_name=req.system_name or "Symbolic Dynamical System"
+        )
+        return traj.to_dict()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/sim/phase-portrait")
+def phase_portrait_endpoint(req: PhaseSpaceRequest):
+    from equation_derivator.simulation.phase_space import PhaseSpaceEngine
+    engine = PhaseSpaceEngine()
+    try:
+        res = engine.generate_phase_portrait(
+            accel_expr_str=req.accel_expr,
+            coord_name=req.coord_name or "x",
+            params=req.params,
+            q0=req.q0 if req.q0 is not None else 1.0,
+            v0=req.v0 if req.v0 is not None else 0.0,
+            t_end=req.t_end or 8.0,
+            dt=req.dt or 0.02,
+            potential_expr_str=req.potential_expr
+        )
+        return res.to_dict()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/sim/quantum-wave")
+def quantum_wave_endpoint(req: QuantumWaveRequest):
+    from equation_derivator.simulation.quantum_sim import QuantumWavePacketSim
+    sim = QuantumWavePacketSim(N=256, x_min=-8.0, x_max=8.0)
+    try:
+        psi0 = sim.create_gaussian_packet(
+            x0=-3.0,
+            p0=req.p0 or 3.0,
+            sigma=req.sigma or 0.5
+        )
+        V = sim.build_potential(
+            barrier_type=req.barrier_type or "barrier",
+            barrier_height=req.barrier_height if req.barrier_height is not None else 4.0,
+            barrier_width=req.barrier_width or 0.5,
+            barrier_center=req.barrier_center or 0.0
+        )
+        res = sim.propagate(psi0, V, t_max=1.5, dt=0.01, n_frames=25)
+        return res.to_dict()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/sim/relativity-orbit")
+def relativity_orbit_endpoint(req: RelativityOrbitRequest):
+    from equation_derivator.simulation.relativity_sim import RelativisticOrbitSim
+    sim = RelativisticOrbitSim(M=1.0, G=1.0, c=1.0)
+    try:
+        if req.mode == "photon":
+            res = sim.simulate_photon_deflection(
+                impact_parameter_b=req.impact_parameter_b or 6.0,
+                x_start=-20.0,
+                y_start=req.impact_parameter_b or 6.0
+            )
+        else:
+            res = sim.simulate_particle_orbit(
+                r0=req.r0 or 12.0,
+                v_phi0=req.v_phi0 or 0.28
+            )
+        return res.to_dict()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/qft/dirac")
+def qft_dirac_endpoint(req: QFTRequest):
+    from equation_derivator.qft.dirac import evaluate_dirac_equation
+    try:
+        res = evaluate_dirac_equation(representation=req.representation or "dirac")
+        return res.to_dict()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/qft/feynman")
+def qft_feynman_endpoint(req: FeynmanRequest):
+    from equation_derivator.qft.feynman import QEDScatteringProcess
+    from equation_derivator.qft.feynman_draw import FeynmanDiagramGenerator
+    try:
+        res = QEDScatteringProcess.evaluate(req.process or "ee_to_mumu")
+        data = res.to_dict()
+        if req.process in ("compton", "photon_scattering"):
+            data["svg_diagram"] = FeynmanDiagramGenerator.draw_compton_scattering()
+        else:
+            data["svg_diagram"] = FeynmanDiagramGenerator.draw_ee_to_mumu()
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/geometry/maxwell")
+def geometry_maxwell_endpoint():
+    from equation_derivator.geometry.maxwell_forms import GeometricMaxwellEngine
+    engine = GeometricMaxwellEngine()
+    try:
+        res = engine.build_electrodynamics()
+        return res.to_dict()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/symmetry/eval")
+def symmetry_endpoint(req: SymmetryRequest):
+    from equation_derivator.symmetry.lie_algebra import SU2Algebra, SU3Algebra
+    from equation_derivator.symmetry.gauge import YangMillsGaugeEngine, HiggsMechanismEngine
+    try:
+        mode = (req.mode or "su2").lower()
+        if mode == "su2":
+            res = SU2Algebra().evaluate()
+            return res.to_dict()
+        elif mode == "su3":
+            res = SU3Algebra().evaluate()
+            return res.to_dict()
+        elif mode == "higgs":
+            res = HiggsMechanismEngine().evaluate_electroweak_breaking()
+            return res.to_dict()
+        else:
+            res = YangMillsGaugeEngine().evaluate_yang_mills("SU(2)")
+            return res.to_dict()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/statmech/eval")
+def statmech_endpoint(req: StatMechRequest):
+    from equation_derivator.statmech.partition import PartitionFunctionEngine
+    from equation_derivator.statmech.distributions import QuantumDistributionEngine
+    engine = PartitionFunctionEngine()
+    try:
+        mode = (req.mode or "ideal_gas").lower()
+        if mode == "ideal_gas":
+            res = engine.evaluate_ideal_gas()
+            return res.to_dict()
+        elif mode == "quantum_oscillator":
+            res = engine.evaluate_quantum_harmonic_oscillator()
+            return res.to_dict()
+        elif mode == "distributions":
+            res = QuantumDistributionEngine().evaluate_distributions()
+            return res.to_dict()
+        elif mode == "custom" and req.partition_function:
+            res = engine.derive_from_Z(req.partition_function, model_name=req.model_name or "Custom Ensemble")
+            return res.to_dict()
+        else:
+            res = engine.evaluate_ideal_gas()
+            return res.to_dict()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @app.post("/api/ask")
 def ask_endpoint(req: AskRequest):
     from equation_derivator.interfaces.nlp import PhysicsQueryDispatcher
@@ -278,3 +500,4 @@ def paper_endpoint(req: PaperRequest):
 web_dir = os.path.join(os.path.dirname(__file__), "web")
 if os.path.exists(web_dir):
     app.mount("/", StaticFiles(directory=web_dir, html=True), name="static")
+
