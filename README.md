@@ -212,6 +212,7 @@ equation_derivator/
 ├── statmech/              # Partition function derivation Z -> (F, S, U, P, Cv), Quantum distributions
 └── interfaces/            # FastAPI backend, Rich CLI, Cyber HTML5/Canvas workbench UI
 ```
+It derived equatiob
 
 ---
 
